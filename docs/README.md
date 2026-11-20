@@ -102,6 +102,7 @@ project.yml, Makefile  # Xcode projesi kaynağı; tek doğrulama giriş noktası
 | [architecture/overview.md](architecture/overview.md) | Modül ekleme/taşıma, veri akışı veya şema değişikliği |
 | [architecture/conventions.md](architecture/conventions.md) | Her kod değişikliğinden önce |
 | [architecture/tech-debt.md](architecture/tech-debt.md) | Borç eklerken ya da öderken |
+| [plans/](plans/) | Bir dilimi uygulamaya başlamadan önce (görev görev uygulama planları) |
 | [decisions/](decisions/) | Bir yaklaşımın "neden"i sorulduğunda; mimari değişiklikten önce |
 
 ## Son kararlar
