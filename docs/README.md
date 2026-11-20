@@ -35,6 +35,7 @@ RLS ile izole edilir. Çalışma adıdır, marka kararı açık (Q-001).
 - Bir değişiklik `make verify` yeşil olmadan bitmiş sayılmaz; şema değişikliği `make verify-db` ister — [ADR-0002](decisions/0002-single-verify-entry-point-and-ci.md)
 - Şema yalnızca `supabase/migrations/` ile değişir; istemcide yalnızca publishable key bulunur — [ADR-0003](decisions/0003-supabase-backend-in-eu.md)
 - Ev verisi taşıyan her tabloda RLS ve pgTAP izolasyon testi zorunludur — [ADR-0004](decisions/0004-household-tenancy-and-row-level-security.md)
+- Finans: gider bir kez tanınır, ekstre ödemesi transferdir; tutarlar kuruş tam sayı — [ADR-0009](decisions/0009-household-finance-ledger-model.md)
 - Stok miktarı mutlak değer değil, hareket (delta) olarak yazılır — [ADR-0005](decisions/0005-offline-first-sync-with-outbox.md)
 - Parola yok; auth hataları hesap varlığını sızdırmaz; token yalnızca Keychain'de saklanır — [ADR-0006](decisions/0006-auth-email-otp-and-sign-in-with-apple.md)
 - En güncel SDK ve iOS 27 HIG; minimum iOS 26.0, iOS 27 API'leri `#available` ile ve iOS 26 karşılığıyla; ekranlar iki sürümde de görülür — [ADR-0007](decisions/0007-ios-27-sdk-and-hig-with-ios-26-floor.md)
@@ -108,11 +109,11 @@ project.yml, Makefile  # Xcode projesi kaynağı; tek doğrulama giriş noktası
 
 ## Son kararlar
 
+- [0009 — Ev finansı defter modeli](decisions/0009-household-finance-ledger-model.md)
 - [0008 — Paket testleri `xcodebuild` ile](decisions/0008-run-package-tests-through-xcodebuild.md)
 - [0007 — iOS 27 SDK ve HIG, iOS 26 tabanı](decisions/0007-ios-27-sdk-and-hig-with-ios-26-floor.md)
 - [0006 — E-posta OTP + Sign in with Apple](decisions/0006-auth-email-otp-and-sign-in-with-apple.md)
 - [0005 — Offline-first: GRDB + outbox, stokta delta](decisions/0005-offline-first-sync-with-outbox.md)
-- [0004 — Ev tenant'tır; RLS ile yetki](decisions/0004-household-tenancy-and-row-level-security.md)
 
 ## Çalışma kuralı
 

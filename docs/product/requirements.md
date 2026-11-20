@@ -34,6 +34,10 @@ Alan bazında S2 seviyesindeki işler başlamadan önce `features/<slug>.md` spe
 | FR-013 | Düzenli ödemeler (fatura, abonelik) | **Given** tekrar kuralı (aylık/yıllık) **When** vade yaklaşır **Then** FR-050 ile hatırlatılır; ödendi işaretlenince gider kaydı oluşur | MVP | Onaylandı | — |
 | FR-014 | Aylık ve yıllık rapor | **Given** dönem **When** açılır **Then** kategori bazlı toplamlar; kişisel kayıtlar yalnızca sahibinin raporunda | MVP | Onaylandı | — |
 | FR-015 | Ay sonu bütçe tahmini ve tasarruf önerileri | — | Sonraki | Taslak | — |
+| FR-016 | Güvenle harcanabilir tutar (maaşa kadar, yaklaşan ödemeler düşülmüş, kırılımı açık) | spec AC-1, AC-2 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-017 | Gelir ve üye başına maaş günü; dönem maaş döngüsüne göre | spec AC-1 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-018 | Kim ödedi, bölüşüm (%50/50 ya da gelire orantılı) ve eşler arası hesaplaşma | spec AC-5 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-019 | Üç seviyeli görünürlük: Ortak / Eşimle / Kişisel | spec AC-6 | MVP | Onaylandı | [spec](features/household-finance.md) |
 
 ### Ev stok yönetimi
 
@@ -82,7 +86,14 @@ Alan bazında S2 seviyesindeki işler başlamadan önce `features/<slug>.md` spe
 | ID | Gereksinim | Kabul kriteri (Given/When/Then) | Öncelik | Durum | Spec |
 |----|------------|-------------------------------|---------|-------|------|
 | FR-070 | Fiş/fatura tarama: ürünler algılanır, onayla gider + stok hareketi | — | Sonraki | Taslak | — |
-| FR-071 | Push ile anlık sunucu bildirimi (üye ekledi/aldı) | — | Sonraki | Taslak | — |
+| FR-071 | Eşe/üyeye anlık bildirim (üye ekledi/aldı); her üye kendi bildirimlerini seçer | spec AC-10 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-073 | Banka SMS'inden harcama doldurma (cihazda; OTP ve reklam reddedilir) | spec AC-8 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-074 | Taksitli harcama planı (kesim döngüsüne göre, kuruş artığı ilk taksitte) | spec AC-4 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-075 | Kart ekstreleri; ekstre ödemesi gider değil transfer | spec AC-3 | MVP | Onaylandı | [spec](features/household-finance.md) |
+| FR-076 | Siri/Kısayollar, Kontrol Merkezi, kilit ekranı widget'ı, Paylaş uzantısı ile giriş | — | Sonraki | Taslak | [spec](features/household-finance.md) |
+| FR-077 | Bütçe yöntemleri (maaş döngüsü, aylık, zarf, sıfır tabanlı) ve dashboard düzenleme | — | Sonraki | Taslak | [spec](features/household-finance.md) |
+| FR-078 | Çocuk cüzdanı (harçlık), okul ödeme planı, kredi takibi | — | Sonraki | Taslak | — |
+| FR-079 | Birikim hedefleri (TL, gram altın, döviz birimiyle) ve aylık taahhüt | — | Sonraki | Taslak | — |
 | FR-072 | Ücretli plan (StoreKit) | — | Belki | Taslak | — |
 
 ## Non-functional requirements
@@ -114,6 +125,7 @@ Alan bazında S2 seviyesindeki işler başlamadan önce `features/<slug>.md` spe
 | A-007 | Offline okuma + yazma kuyruğu; metinde LWW (sunucu zamanı), stokta delta | Marketteki zayıf sinyal | Yüksek | Onaylandı |
 | A-008 | Tek geliştirici, son tarih yok, beta ≤ 50 $/ay, MVP'de ödeme yok | Kullanıcı onayı | Orta | Onaylandı |
 | A-009 | Başarı: 15 hanelik TestFlight betası, 6. haftada metrikler (vision.md) | Kullanıcı onayı | Orta | Onaylandı |
+| A-011 | Görünürlük üç seviyeli (Ortak / Eşimle / Kişisel); A-005'i genişletir; finans defteri ADR-0009 | Prototip incelemesi (3 profil) | Yüksek | Onaylandı |
 | A-010 | Walking skeleton'da giriş e-posta OTP ile; Sign in with Apple, Apple Developer Team ID gelince ilk dilimde | Apple girişi imzalı build + Apple Developer hesabı ister | Düşük | Onaylandı |
 
 ## Açık sorular
@@ -126,6 +138,7 @@ Alan bazında S2 seviyesindeki işler başlamadan önce `features/<slug>.md` spe
 | Q-004 | Stok takibinde manuel yükü azaltmanın ilk yolu ne olacak? (FR-024/025/070) | Doğancan | Beta 6. hafta verisiyle | — |
 | Q-005 | Apple Developer Team ID ve bundle id (`com.<?>.homeras`) | Doğancan | FR-002 dilimi | — |
 | Q-006 | Üretim Supabase projesi kimin hesabında, hangi organizasyonda açılacak? | Doğancan | İlk TestFlight build'i | — |
+| Q-008 | FinanceKit / Apple Wallet işlem erişimi Türk banka kartları için mümkün mü? | Doğancan | FR-076 dilimi | — |
 | Q-007 | Uygulamanın UX'i ve bilgi mimarisi (sekme yapısı, ana sayfa, ekran akışları, görsel dil) ne olacak? Önce tıklanabilir prototip yapılıp üzerinde konuşulacak. Walking skeleton ekranları teknik iskelettir, UX onayı yoktur. Başlangıç girdisi (ilk taslak): beş ana ekran: Ana Sayfa (aylık bütçe, yaklaşan ödemeler, azalan stoklar), Finans (gelir/gider, bütçe, kategori, analiz), Ev (envanter, demirbaş, konum, stok), Alışveriş (ortak ve tamamlanan listeler), Aile (üyeler, görevler, takvim, ev ve hesap ayarları) | Doğancan | Bir sonraki ekran dilimi başlamadan önce | — |
 
 ## Kapsam dışı
@@ -133,4 +146,3 @@ Alan bazında S2 seviyesindeki işler başlamadan önce `features/<slug>.md` spe
 - Banka/kart entegrasyonu, otomatik içe aktarma.
 - Çoklu para birimi, Android, iPad, Apple Watch.
 - Ödeme ve abonelik akışları (MVP).
-- Sunucu push bildirimleri (MVP'de yalnızca yerel bildirim; FR-071 Sonraki).
