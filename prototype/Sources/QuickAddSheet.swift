@@ -18,6 +18,7 @@ struct QuickAddSheet: View {
     @State private var merchant = ""
     @State private var installmentCount = 1
     @State private var parsedFromMessage = false
+    @State private var messageNotRecognized = false
     @FocusState private var isFocused: Bool
 
     private let expenseCategories = ["Market", "Faturalar", "Ulaşım", "Eğlence", "Sağlık", "Ev"]
@@ -64,9 +65,14 @@ struct QuickAddSheet: View {
                     } header: {
                         Text("Banka mesajından")
                     } footer: {
-                        Text(parsedFromMessage
-                            ? "Banka mesajı telefonunuzda okundu, hiçbir yere gönderilmedi. Bilgileri kontrol edip ekleyin."
-                            : "Bankadan gelen harcama mesajını kopyalayıp yapıştırın: tutar, işyeri ve kategori kendiliğinden dolar.")
+                        if messageNotRecognized {
+                            Label("Yapıştırılan metinde harcama tutarı bulunamadı. Bankanın harcama mesajını kopyaladığınızdan emin olun ya da tutarı elle girin.", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Color("Warning"))
+                        } else {
+                            Text(parsedFromMessage
+                                ? "Banka mesajı telefonunuzda okundu, hiçbir yere gönderilmedi. Bilgileri kontrol edip ekleyin."
+                                : "Bankadan gelen harcama mesajını kopyalayıp yapıştırın: tutar, işyeri ve kategori kendiliğinden dolar.")
+                        }
                     }
                     Section {
                         TextField("₺0", value: $amount, format: .currency(code: "TRY"))
@@ -149,8 +155,16 @@ struct QuickAddSheet: View {
     }
 
     private func apply(_ message: String) {
-        guard let result = BankMessageParser.parse(message) else { return }
+        guard let result = BankMessageParser.parse(message) else {
+            // Tell the user instead of silently ignoring the paste.
+            withAnimation {
+                messageNotRecognized = true
+                parsedFromMessage = false
+            }
+            return
+        }
         withAnimation {
+            messageNotRecognized = false
             amount = result.amount
             merchant = result.merchant ?? ""
             if let guessed = result.category, expenseCategories.contains(guessed) { category = guessed }
