@@ -39,9 +39,12 @@ struct DesignSystemTests {
         #expect(AuthError.offline.userMessage == RepositoryError.offline.userMessage)
     }
 
-    @Test func undoActionIsTranslated() {
-        let undo = String(localized: "action.undo", bundle: .designSystem)
-        #expect(undo == "Geri al" || undo == "Undo")
+    @Test(arguments: [("tr", "Geri al"), ("en", "Undo")])
+    func undoActionIsTranslatedPerLanguage(language: String, expected: String) throws {
+        let path = try #require(Bundle.designSystem.path(forResource: language, ofType: "lproj"))
+        let localized = try #require(Bundle(path: path))
+        let value = localized.localizedString(forKey: "action.undo", value: nil, table: nil)
+        #expect(value == expected)
     }
 
     @Test func semanticColoursResolveFromTheCatalog() {
