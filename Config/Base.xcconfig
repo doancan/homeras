@@ -1,0 +1,9 @@
+// Shared build settings. Per-developer values (backend URL/key, team) come from Local.xcconfig,
+// which is git-ignored; copy Local.xcconfig.example or run `make local-config`.
+
+HOMERAS_BUNDLE_ID = app.homeras.Homeras
+HOMERAS_DEVELOPMENT_TEAM =
+HOMERAS_SUPABASE_URL =
+HOMERAS_SUPABASE_PUBLISHABLE_KEY =
+
+#include? "Local.xcconfig"

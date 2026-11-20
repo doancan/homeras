@@ -1,0 +1,125 @@
+{
+  "sourceLanguage": "tr",
+  "strings": {
+    "household.create.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your shopping list, supplies and budget live in this home. You can invite your family next."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alışveriş listesi, stoklar ve bütçe bu evde toplanır. Sonra ailenizi davet edebilirsiniz."
+          }
+        }
+      }
+    },
+    "household.create.nameFooter %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up to %lld characters. Only members of your home see it."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En fazla %lld karakter. Bu adı yalnızca ev üyeleri görür."
+          }
+        }
+      }
+    },
+    "household.create.nameLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home name"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ev adı"
+          }
+        }
+      }
+    },
+    "household.create.namePrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For example, The Smiths"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Örneğin Yılmaz Ailesi"
+          }
+        }
+      }
+    },
+    "household.create.submit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create home"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evi oluştur"
+          }
+        }
+      }
+    },
+    "household.create.submitting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creating"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oluşturuluyor"
+          }
+        }
+      }
+    },
+    "household.create.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create your home"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evinizi oluşturun"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

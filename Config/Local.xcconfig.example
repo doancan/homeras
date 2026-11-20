@@ -1,0 +1,7 @@
+// Copy to Config/Local.xcconfig (git-ignored), or run `make local-config` to fill it from the
+// local Supabase stack. "$()" keeps "//" from starting an xcconfig comment.
+
+HOMERAS_SUPABASE_URL = http:/$()/127.0.0.1:54721
+HOMERAS_SUPABASE_PUBLISHABLE_KEY = <publishable key from `supabase status`>
+// HOMERAS_DEVELOPMENT_TEAM = <Apple Developer Team ID>
+// HOMERAS_BUNDLE_ID = <your.bundle.id>

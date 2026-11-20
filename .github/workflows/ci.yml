@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: make verify (iOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+      - name: Select Xcode (keep in sync with docs/README.md)
+        run: sudo xcode-select -s /Applications/Xcode_27.2.app
+      - run: brew install xcodegen
+      - uses: actions/cache@v4
+        with:
+          path: Packages/AppModules/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('Packages/AppModules/Package.resolved') }}
+      - run: make setup verify
+
+  database:
+    name: make verify-db (RLS and tenant isolation)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      - run: make verify-db
+
+  security:
+    name: make verify-security (secret scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - run: brew install gitleaks
+      - run: make verify-security

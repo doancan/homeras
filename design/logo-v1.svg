@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Homeras — Budget Roof</title>
+  <desc id="desc">Ev çatısı altında büyüyen sade bütçe grafiği. Flat vector icon, fully scalable.</desc>
+  <rect width="1024" height="1024" fill="#F8F0E6"/>
+  <path d="M237 423 478 231 Q512 206 546 231 L787 423" fill="none" stroke="#254940" stroke-width="87" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="310" y="590" width="117" height="178" rx="51" fill="#EBA36D"/>
+  <rect x="454" y="518" width="117" height="250" rx="51" fill="#85CCB4"/>
+  <rect x="598" y="449" width="117" height="319" rx="51" fill="#254940"/>
+
+</svg>

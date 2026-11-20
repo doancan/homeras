@@ -1,0 +1,86 @@
+# Source of truth for the Xcode project. Generate with `make generate`; never commit the .xcodeproj.
+name: Homeras
+options:
+  bundleIdPrefix: app.homeras
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: tr
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+packages:
+  AppModules:
+    path: Packages/AppModules
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    SWIFT_UPCOMING_FEATURE_NONISOLATED_NONSENDING_BY_DEFAULT: YES
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    GENERATE_INFOPLIST_FILE: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  Homeras:
+    type: application
+    platform: iOS
+    sources:
+      - App
+    dependencies:
+      - package: AppModules
+        products: [Core, DesignSystem, SupabaseBackend, AuthFeature, HouseholdFeature, ShoppingFeature]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Homeras
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+        HomerasSupabaseURL: $(HOMERAS_SUPABASE_URL)
+        HomerasSupabasePublishableKey: $(HOMERAS_SUPABASE_PUBLISHABLE_KEY)
+        # Lets Debug builds reach the local Supabase stack over plain HTTP on loopback only.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_NAME: Homeras
+        PRODUCT_BUNDLE_IDENTIFIER: $(HOMERAS_BUNDLE_ID)
+        DEVELOPMENT_TEAM: $(HOMERAS_DEVELOPMENT_TEAM)
+        CODE_SIGN_STYLE: Automatic
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # Rendered from design/logo-v1.svg (opaque 1024 px PNG). Temporary until the brand is decided (Q-001).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: YES
+  HomerasTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - AppTests
+    dependencies:
+      - target: Homeras
+      - package: AppModules
+        products: [TestSupport]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(HOMERAS_BUNDLE_ID).tests
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+schemes:
+  Homeras:
+    build:
+      targets:
+        Homeras: all
+    test:
+      targets: [HomerasTests]
+      gatherCoverageData: true
