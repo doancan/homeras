@@ -101,6 +101,8 @@ final class PrototypeStore {
 
     /// Blurs money amounts (Revolut's "hide balances"): useful on a phone the family shares.
     var hidesAmounts = false
+    /// The quick-add sheet, opened from the trailing + of any tab.
+    var isQuickAddPresented = false
     /// False until someone else has joined; the sample household starts with three members.
     var hasInvitedFamily = true
     /// Things this household buys again and again (Target's "My Usuals").
@@ -111,7 +113,7 @@ final class PrototypeStore {
     var setupSteps: [(title: String, detail: String, isDone: Bool)] {
         [
             ("Aileni davet et", "Liste ve bütçe herkesle paylaşılır", hasInvitedFamily),
-            ("İlk ürünü listeye ekle", "“Hızlı ekle” ile birkaç saniyede", !shopping.isEmpty),
+            ("İlk ürünü listeye ekle", "Sağ üstteki + ile birkaç saniyede", !shopping.isEmpty),
             ("Aylık bütçeni belirle", "Harcadıkça ayın gidişatını görürsün", false),
         ]
     }

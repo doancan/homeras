@@ -86,6 +86,7 @@ struct TodayView: View {
                     }
                     .accessibilityLabel("Aile ve ayarlar")
                 }
+                QuickAddToolbarItem(store: store)
             }
             .sheet(isPresented: $isFamilyPresented) {
                 FamilySheet()

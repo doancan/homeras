@@ -46,6 +46,7 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Ara")
+            .toolbar { QuickAddToolbarItem(store: store) }
             .searchable(text: $query, prompt: "Eşya, stok, harcama…")
             .onSubmit(of: .search) { store.remember(search: query) }
             .navigationDestination(for: Belonging.self) { BelongingDetailView(item: $0) }

@@ -6,6 +6,7 @@ struct PrototypeApp: App {
         let store = PrototypeStore()
         if Demo.value("demo") == "empty" { store.resetToFreshHousehold() }
         if Demo.value("hide") == "1" { store.hidesAmounts = true }
+        if Demo.value("demo") == "quickAdd" { store.isQuickAddPresented = true }
         return store
     }()
 
@@ -27,7 +28,6 @@ enum AppTab: Hashable {
 struct RootTabs: View {
     @Environment(PrototypeStore.self) private var store
     @State private var selection = Demo.initialTab
-    @State private var isQuickAddPresented = Demo.value("demo") == "quickAdd"
 
     var body: some View {
         TabView(selection: $selection) {
@@ -49,17 +49,7 @@ struct RootTabs: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory {
-            Button {
-                isQuickAddPresented = true
-            } label: {
-                Label("Hızlı ekle", systemImage: "plus.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .accessibilityHint("Alışveriş, harcama ya da stok ekle")
-        }
-        .sheet(isPresented: $isQuickAddPresented) {
+        .sheet(isPresented: Bindable(store).isQuickAddPresented) {
             QuickAddSheet()
                 .presentationDetents([.medium, .large])
         }

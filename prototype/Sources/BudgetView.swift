@@ -58,7 +58,7 @@ struct BudgetView: View {
                     if expenses.isEmpty {
                         ContentUnavailableView(
                             "Bu ay kayıt yok", systemImage: "tray",
-                            description: Text("“Hızlı ekle” ile harcama ekleyin."))
+                            description: Text("Sağ üstteki + ile harcama ekleyin."))
                     }
                     ForEach(expenses) { ExpenseRow(expense: $0) }
                 }
@@ -75,6 +75,7 @@ struct BudgetView: View {
                         Label("Ay seç", systemImage: "calendar")
                     }
                 }
+                QuickAddToolbarItem(store: store)
             }
         }
     }

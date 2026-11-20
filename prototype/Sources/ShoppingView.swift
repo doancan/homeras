@@ -76,7 +76,7 @@ struct ShoppingView: View {
                 if pending.isEmpty && inCart.isEmpty {
                     ContentUnavailableView(
                         "Liste boş", systemImage: "cart",
-                        description: Text("“Hızlı ekle” ile ürün ekleyin. Evdeki herkes aynı listeyi görür."))
+                        description: Text("Sağ üstteki + ile ürün ekleyin. Evdeki herkes aynı listeyi görür."))
                 }
 
                 ForEach(groups, id: \.0) { category, entries in
@@ -104,9 +104,9 @@ struct ShoppingView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Bitir", systemImage: "checkmark") { isFinishPresented = true }
                             .labelStyle(.titleAndIcon)
-                            .buttonStyle(.glassProminent)
                     }
                 }
+                QuickAddToolbarItem(store: store)
             }
             .sheet(isPresented: $isFinishPresented) {
                 FinishShoppingSheet()

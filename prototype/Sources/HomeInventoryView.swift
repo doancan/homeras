@@ -31,6 +31,7 @@ struct HomeInventoryView: View {
             }
             .listSectionSpacing(.compact)
             .navigationTitle("Ev")
+            .toolbar { QuickAddToolbarItem(store: store) }
             .searchable(text: $query, prompt: mode == .stock ? "Stokta ara" : "Eşya ya da konum ara")
             .navigationDestination(for: Belonging.self) { BelongingDetailView(item: $0) }
             .onAppear {

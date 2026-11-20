@@ -13,6 +13,21 @@ extension View {
     }
 }
 
+/// The one prominent action of every tab: always the trailing-most item in the navigation bar,
+/// so it never covers content (functional layer, system glass).
+struct QuickAddToolbarItem: ToolbarContent {
+    let store: PrototypeStore
+
+    var body: some ToolbarContent {
+        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+        ToolbarItem(placement: .topBarTrailing) {
+            Button("Hızlı ekle", systemImage: "plus") { store.isQuickAddPresented = true }
+                .buttonStyle(.glassProminent)
+                .accessibilityHint("Alışveriş, harcama ya da stok ekle")
+        }
+    }
+}
+
 extension View {
     /// Blurs a money amount while the household hides amounts; VoiceOver hears "gizli".
     func moneyPrivacy(_ isHidden: Bool) -> some View {
