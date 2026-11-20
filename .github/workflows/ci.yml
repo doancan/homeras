@@ -16,8 +16,14 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
-      - name: Select Xcode (keep in sync with docs/README.md)
-        run: sudo xcode-select -s /Applications/Xcode_27.2.app
+      - name: Select the newest Xcode 27 (ADR-0007; keep in sync with docs/README.md)
+        run: |
+          xcode="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$xcode" ]; then
+            echo "No Xcode 27 on this runner. Available:"; ls -d /Applications/Xcode*.app; exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
       - run: brew install xcodegen
       - uses: actions/cache@v4
         with:
@@ -44,5 +50,5 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - run: brew install gitleaks
+      # Runs gitleaks from its pinned Docker image (see GITLEAKS_IMAGE in the Makefile).
       - run: make verify-security

@@ -10,6 +10,9 @@ DEST     ?= platform=iOS Simulator,name=$(SIM_NAME),OS=latest
 BUNDLE_ID ?= app.homeras.Homeras
 SWIFT_SOURCES := App AppTests $(PKG)/Sources $(PKG)/Tests $(PKG)/Package.swift
 
+# Pinned by version and digest; used when gitleaks is not installed locally.
+GITLEAKS_IMAGE := ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055
+
 # Reads API_URL, PUBLISHABLE_KEY and MAILPIT_URL of the running local stack.
 SUPABASE_ENV = supabase status -o env 2>/dev/null | grep -E '^(API_URL|PUBLISHABLE_KEY|MAILPIT_URL)='
 
@@ -64,9 +67,14 @@ verify-integration: verify-db ## verify-db plus the Swift adapter end to end aga
 	HOMERAS_MAILPIT_URL="$$MAILPIT_URL" \
 	swift test --package-path $(PKG) --filter SupabaseBackendIntegrationTests
 
-verify-security: ## Scan the repository history for committed secrets
-	@command -v gitleaks >/dev/null || { echo "Missing gitleaks: brew install gitleaks"; exit 1; }
-	gitleaks git --no-banner
+verify-security: ## Scan the repository history (all branches) for committed secrets
+	@if command -v gitleaks >/dev/null; then \
+		gitleaks git --no-banner --redact --log-opts="--all" .; \
+	elif command -v docker >/dev/null; then \
+		docker run --rm -v "$(CURDIR):/repo" -w /repo $(GITLEAKS_IMAGE) git --no-banner --redact --log-opts="--all" .; \
+	else \
+		echo "Missing gitleaks: brew install gitleaks (or install Docker)"; exit 1; \
+	fi
 
 local-config: ## Write Config/Local.xcconfig for the running local stack
 	@eval "$$($(SUPABASE_ENV))" && \

@@ -5,7 +5,7 @@ iPhone uygulamasında yönettiği platform. Native iOS 26+ (Swift 6, SwiftUI) ve
 
 ## Çalıştırma
 
-Gereksinimler: Xcode 27.2, Docker ve `brew install xcodegen supabase/tap/supabase gitleaks`.
+Gereksinimler: Xcode 27.2, Docker ve `brew install xcodegen supabase/tap/supabase`.
 
 ```sh
 make setup && make db-start && make local-config

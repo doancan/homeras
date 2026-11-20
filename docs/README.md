@@ -54,7 +54,7 @@ RLS ile izole edilir. Çalışma adıdır, marka kararı açık (Q-001).
 
 **Gereksinimler:**
 - Xcode 27.2 (iOS 27.2 SDK; deployment target iOS 26.0).
-- `brew install xcodegen supabase/tap/supabase gitleaks`.
+- `brew install xcodegen supabase/tap/supabase` (gitleaks isteğe bağlı; yoksa `make verify-security` sabitlenmiş Docker imajını kullanır).
 - Docker (yerel Supabase için).
 
 ```sh
