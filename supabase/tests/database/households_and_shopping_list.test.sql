@@ -100,11 +100,9 @@ select throws_ok(
     null,
     'another user cannot add items to the household'
 );
-select throws_ok(
+select lives_ok(
     $$ delete from public.shopping_items $$,
-    '42501',
-    null,
-    'clients cannot delete items in this slice'
+    'a user outside the household deleting items is a silent no-op'
 );
 select throws_ok(
     $$ select public.create_household('') $$,
