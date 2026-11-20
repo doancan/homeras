@@ -6,7 +6,15 @@ import os
 /// Translates SDK and transport errors into domain errors. Server messages are logged privately
 /// and never surfaced: they can contain user data or reveal whether an account exists.
 enum ErrorMapping {
-    private static let logger = Logger(subsystem: "app.homeras", category: "SupabaseBackend")
+    static let logger = Logger(subsystem: "app.homeras", category: "SupabaseBackend")
+
+    /// A row from the server broke a domain rule the database should already enforce.
+    static func invalidRow(_ table: String, id: UUID) -> RepositoryError {
+        logger.error(
+            "Invalid \(table, privacy: .public) row \(id.uuidString, privacy: .private) violates domain rules"
+        )
+        return .unexpected
+    }
 
     static func repositoryError(from error: any Error) -> RepositoryError {
         if isConnectivityFailure(error) { return .offline }

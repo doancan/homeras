@@ -9,7 +9,9 @@ struct HouseholdRow: Decodable, Equatable {
     let name: String
 
     func domain() throws(RepositoryError) -> Household {
-        guard let name = try? HouseholdName(name) else { throw .unexpected }
+        guard let name = try? HouseholdName(name) else {
+            throw ErrorMapping.invalidRow("households", id: id)
+        }
         return Household(id: HouseholdID(id), name: name)
     }
 }
@@ -30,7 +32,9 @@ struct ShoppingItemRow: Decodable, Equatable {
     }
 
     func domain() throws(RepositoryError) -> ShoppingItem {
-        guard let name = try? ShoppingItemName(name) else { throw .unexpected }
+        guard let name = try? ShoppingItemName(name) else {
+            throw ErrorMapping.invalidRow("shopping_items", id: id)
+        }
         return ShoppingItem(id: ShoppingItemID(id), name: name, createdAt: createdAt)
     }
 }
