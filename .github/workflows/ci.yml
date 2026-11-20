@@ -16,11 +16,14 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
-      - name: Select the newest Xcode 27 (ADR-0007; keep in sync with docs/README.md)
+      # Newest Xcode on the runner: 27.x once GitHub ships it (ADR-0007), otherwise the newest 26.x,
+      # which then also checks the iOS 26 SDK floor (TD-003).
+      - name: Select the newest Xcode
         run: |
           xcode="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)"
           if [ -z "$xcode" ]; then
-            echo "No Xcode 27 on this runner. Available:"; ls -d /Applications/Xcode*.app; exit 1
+            xcode="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+            echo "::warning::No Xcode 27 on this runner; building with $xcode (TD-003)."
           fi
           sudo xcode-select -s "$xcode"
           xcodebuild -version
