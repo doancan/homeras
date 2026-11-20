@@ -7,6 +7,7 @@ struct PrototypeApp: App {
         if Demo.value("demo") == "empty" { store.resetToFreshHousehold() }
         if Demo.value("hide") == "1" { store.hidesAmounts = true }
         if Demo.value("demo") == "quickAdd" { store.isQuickAddPresented = true }
+        if Demo.value("toast") == "1" { store.lastAdded = store.expenses.first }
         return store
     }()
 
@@ -49,6 +50,19 @@ struct RootTabs: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .overlay(alignment: .bottom) {
+            // Above the tab bar: never covers the navigation bar's actions, and is in thumb reach.
+            if let last = store.lastAdded {
+                UndoToast(expense: last)
+                    .padding(.bottom, 96)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .task(id: last.id) {
+                        try? await Task.sleep(for: .seconds(5))  // auto-dismiss; cancellation just ends it early
+                        withAnimation { if store.lastAdded?.id == last.id { store.lastAdded = nil } }
+                    }
+            }
+        }
+        .animation(.snappy, value: store.lastAdded?.id)
         .sheet(isPresented: Bindable(store).isQuickAddPresented) {
             QuickAddSheet()
                 .presentationDetents([.medium, .large])
@@ -71,5 +85,35 @@ enum Demo {
         case "search": .search
         default: .today
         }
+    }
+}
+
+/// Confirms a saved expense and offers undo for a few seconds (Dime-style confirmation).
+struct UndoToast: View {
+    @Environment(PrototypeStore.self) private var store
+    let expense: Expense
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(Color.accentColor)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(expense.amount.lira) \(expense.category)")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                Text("eklendi")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Button("Geri al") { withAnimation { store.undoLastAdded() } }
+                .font(.subheadline.weight(.semibold))
+                .padding(.leading, 8)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassEffect(.regular, in: .capsule)
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Geri al") { store.undoLastAdded() }
     }
 }

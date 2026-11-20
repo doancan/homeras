@@ -251,43 +251,233 @@ struct InstallmentsView: View {
     }
 }
 
+/// Subscriptions: count and yearly total up top, each row says when it renews; add from a
+/// catalogue of common Turkish services or a custom one (Orbit / Subo patterns).
 struct SubscriptionsView: View {
     @Environment(PrototypeStore.self) private var store
+    @State private var showsYearly = false
+    @State private var isAddPresented = false
 
     var body: some View {
         List {
             Section {
-                LabeledContent("Her ay toplam", value: store.subscriptionsMonthly.lira)
-                    .monospacedDigit()
-                    .moneyPrivacy(store.hidesAmounts)
-                LabeledContent("Yılda", value: (store.subscriptionsMonthly * 12).lira)
-                    .monospacedDigit()
-                    .moneyPrivacy(store.hidesAmounts)
-            }
-            Section {
-                ForEach(store.subscriptions.sorted { $0.day < $1.day }) { subscription in
-                    HStack(spacing: 12) {
-                        IconBadge(symbol: subscription.symbol, tint: .accentColor)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(subscription.name)
-                            Text("Her ay \(subscription.day). gün")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 8)
-                        Text(subscription.amount.lira)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(store.subscriptions.count)")
+                            .font(.largeTitle.weight(.bold))
                             .monospacedDigit()
-                            .moneyPrivacy(store.hidesAmounts)
+                        Text("aktif ödeme")
+                            .foregroundStyle(.secondary)
                     }
-                    .accessibilityElement(children: .combine)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text((showsYearly ? store.subscriptionsMonthly * 12 : store.subscriptionsMonthly).lira)
+                            .font(.title2.weight(.semibold))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .moneyPrivacy(store.hidesAmounts)
+                        Button(showsYearly ? "yılda ⌃" : "ayda ⌃") {
+                            withAnimation { showsYearly.toggle() }
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(showsYearly ? "Yıllık gösteriliyor, aylığa geç" : "Aylık gösteriliyor, yıllığa geç")
+                    }
                 }
-            } header: {
-                Text("Düzenli ödemeler")
-            } footer: {
-                Text("Günü gelince hatırlatılır. İsterseniz ödendi olarak kendiliğinden gidere yazılır.")
+                .padding(.vertical, 4)
+            }
+
+            Section("Sıradaki yenilemeler") {
+                ForEach(store.subscriptions.sorted { $0.nextRenewal < $1.nextRenewal }) { subscription in
+                    NavigationLink { SubscriptionDetail(subscription: subscription) } label: {
+                        HStack(spacing: 12) {
+                            IconBadge(symbol: subscription.symbol, tint: .accentColor)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(subscription.name)
+                                Text(renewalText(subscription))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Text(subscription.amount.lira)
+                                .monospacedDigit()
+                                .moneyPrivacy(store.hidesAmounts)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
             }
         }
-        .navigationTitle("Abonelik ve faturalar")
+        .navigationTitle("Abonelikler")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Abonelik ekle", systemImage: "plus") { isAddPresented = true }
+            }
+        }
+        .sheet(isPresented: $isAddPresented) {
+            AddSubscriptionSheet()
+        }
+    }
+
+    private func renewalText(_ subscription: Subscription) -> String {
+        let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now), to: subscription.nextRenewal).day ?? 0
+        let when = days <= 1 ? "Yarın" : "\(days) gün sonra"
+        return "\(when) · \(subscription.nextRenewal.formatted(.dateTime.day().month(.wide)))"
+    }
+}
+
+struct SubscriptionDetail: View {
+    @Environment(PrototypeStore.self) private var store
+    let subscription: Subscription
+    @State private var isDeleteConfirming = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    IconBadge(symbol: subscription.symbol, tint: .accentColor)
+                        .scaleEffect(1.4, anchor: .leading)
+                        .padding(.bottom, 6)
+                    Text(subscription.name)
+                        .font(.title.weight(.bold))
+                    Text("\(subscription.amount.lira) / ay")
+                        .font(.title3)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .moneyPrivacy(store.hidesAmounts)
+                }
+                .padding(.vertical, 6)
+            }
+            Section {
+                LabeledContent("Sonraki ödeme", value: subscription.nextRenewal.formatted(.dateTime.day().month(.wide).weekday(.wide)))
+                LabeledContent("Ne zamandır", value: "\(subscription.monthsActive) ay")
+                LabeledContent("Bugüne kadar", value: subscription.totalPaid.lira)
+                    .moneyPrivacy(store.hidesAmounts)
+                LabeledContent("Yılda", value: (subscription.amount * 12).lira)
+                    .moneyPrivacy(store.hidesAmounts)
+            }
+            .monospacedDigit()
+            Section {
+                Button("Bu ay ödendi", systemImage: "checkmark.circle") {}
+                Button("Aboneliği sil", systemImage: "trash", role: .destructive) { isDeleteConfirming = true }
+                    .confirmationDialog("\(subscription.name) silinsin mi?", isPresented: $isDeleteConfirming, titleVisibility: .visible) {
+                        Button("Sil", role: .destructive) {
+                            store.subscriptions.removeAll { $0.id == subscription.id }
+                            dismiss()
+                        }
+                    } message: {
+                        Text("Geçmiş ödemeler harcamalarda kalır; yalnızca gelecekteki hatırlatmalar durur.")
+                    }
+            }
+        }
+        .navigationTitle(subscription.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Add from a catalogue of common services (search + group chips), or a custom one.
+struct AddSubscriptionSheet: View {
+    @Environment(PrototypeStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var group: String?
+    @State private var selected: ServiceTemplate?
+    @State private var amount: Decimal?
+    @State private var day = Calendar.current.component(.day, from: .now)
+
+    private var groups: [String] { Array(Set(ServiceTemplate.catalog.map(\.group))).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
+    private var results: [ServiceTemplate] {
+        ServiceTemplate.catalog.filter { template in
+            (group == nil || template.group == group) && template.name.matchesSearch(query)
+                && !store.subscriptions.contains { $0.name == template.name }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let selected {
+                    Form {
+                        Section {
+                            Label(selected.name, systemImage: selected.symbol)
+                                .font(.headline)
+                            TextField("Tutar", value: $amount, format: .currency(code: "TRY"))
+                                .keyboardType(.decimalPad)
+                                .monospacedDigit()
+                            Stepper("Her ay \(day). gün", value: $day, in: 1...31)
+                        } footer: {
+                            Text("Ödeme gününden önce hatırlatılır ve güvenle harcanabilir tutardan düşülür.")
+                        }
+                    }
+                } else {
+                    List {
+                        Section {
+                            ScrollView(.horizontal) {
+                                HStack(spacing: 8) {
+                                    FilterChip(title: "Tümü", isOn: group == nil) { group = nil }
+                                    ForEach(groups, id: \.self) { name in
+                                        FilterChip(title: name, isOn: group == name) { group = group == name ? nil : name }
+                                    }
+                                }
+                            }
+                            .scrollIndicators(.hidden)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        }
+                        Section {
+                            Button {
+                                choose(ServiceTemplate(name: query.isEmpty ? "Yeni abonelik" : query, group: "Diğer", symbol: "plus.circle", typicalAmount: 0))
+                            } label: {
+                                Label(query.isEmpty ? "Özel abonelik" : "“\(query)” ekle", systemImage: "plus.circle.fill")
+                            }
+                        }
+                        Section("Sık kullanılanlar") {
+                            ForEach(results) { template in
+                                Button { choose(template) } label: {
+                                    HStack(spacing: 12) {
+                                        IconBadge(symbol: template.symbol, tint: .accentColor)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(template.name).foregroundStyle(.primary)
+                                            Text("\(template.group) · genelde \(template.typicalAmount.lira)")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .searchable(text: $query, prompt: "Servis ara")
+                }
+            }
+            .navigationTitle(selected == nil ? "Abonelik ekle" : "Ayrıntılar")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Vazgeç", role: .cancel) { dismiss() }
+                }
+                if selected != nil {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Ekle") { save() }
+                            .buttonStyle(.glassProminent)
+                            .disabled((amount ?? 0) <= 0)
+                    }
+                }
+            }
+        }
+    }
+
+    private func choose(_ template: ServiceTemplate) {
+        withAnimation {
+            selected = template
+            amount = template.typicalAmount > 0 ? template.typicalAmount : nil
+        }
+    }
+
+    private func save() {
+        guard let selected, let amount, amount > 0 else { return }
+        store.subscriptions.append(Subscription(name: selected.name, amount: amount, day: day, symbol: selected.symbol, since: .now))
+        dismiss()
     }
 }
 
@@ -433,18 +623,136 @@ struct SettlementView: View {
 
 // MARK: - Categories
 
+/// Categories with limits; add from suggestions in one tap, edit colour/icon/limit, and delete
+/// without losing spending (records move to "Diğer").
 struct CategoriesView: View {
     @Environment(PrototypeStore.self) private var store
+    @State private var editing: BudgetCategory?
 
     var body: some View {
         List {
             Section {
-                ForEach(store.categories) { CategoryRow(category: $0) }
+                ForEach(store.categories) { category in
+                    Button { editing = category } label: { CategoryRow(category: category) }
+                        .buttonStyle(.plain)
+                }
             } footer: {
-                Text("Çubuktaki ince çizgi, harcama dönem boyunca eşit dağılsaydı bugün nerede olunacağını gösterir. Limitin %80'inde ve aşıldığında bildirim gelir.")
+                Text("Çubuktaki ince çizgi, harcama dönem boyunca eşit dağılsaydı bugün nerede olunacağını gösterir. Limitin %80'inde ve aşıldığında bildirim gelir. Düzenlemek için dokunun.")
+            }
+            if !store.availableSuggestions.isEmpty {
+                Section("Önerilen") {
+                    ForEach(store.availableSuggestions, id: \.name) { suggestion in
+                        HStack(spacing: 12) {
+                            IconBadge(symbol: suggestion.symbol, tint: suggestion.color)
+                            Text(suggestion.name)
+                            Spacer()
+                            Button {
+                                withAnimation { store.addCategory(name: suggestion.name, symbol: suggestion.symbol, color: suggestion.color) }
+                            } label: {
+                                Label("\(suggestion.name) ekle", systemImage: "plus.circle.fill")
+                                    .labelStyle(.iconOnly)
+                                    .font(.title2)
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("Kategoriler")
+        .sheet(item: $editing) { category in
+            CategoryEditor(category: category)
+                .presentationDetents([.medium, .large])
+        }
+    }
+}
+
+struct CategoryEditor: View {
+    @Environment(PrototypeStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let category: BudgetCategory
+    @State private var limit: Decimal = 0
+    @State private var symbol = ""
+    @State private var color = Color.accentColor
+    @State private var isDeleteConfirming = false
+
+    private let symbols = ["cart", "bolt", "car", "popcorn", "cross.case", "sofa", "graduationcap", "figure.and.child.holdinghands", "house", "banknote", "pawprint", "tshirt", "heart", "fork.knife", "airplane", "gift"]
+    private let colors: [Color] = [
+        Color(red: 0.16, green: 0.55, blue: 0.42), Color(red: 0.16, green: 0.44, blue: 0.74), Color(red: 0.78, green: 0.45, blue: 0.12),
+        Color(red: 0.52, green: 0.33, blue: 0.75), Color(red: 0.80, green: 0.25, blue: 0.30), Color(red: 0.50, green: 0.40, blue: 0.30),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Aylık limit") {
+                    TextField("Limit", value: $limit, format: .currency(code: "TRY").precision(.fractionLength(0)))
+                        .keyboardType(.numberPad)
+                        .monospacedDigit()
+                }
+                Section("Simge") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
+                        ForEach(symbols, id: \.self) { name in
+                            Button { symbol = name } label: {
+                                Image(systemName: name)
+                                    .frame(width: 44, height: 44)
+                                    .background(symbol == name ? color.opacity(0.2) : Color.clear, in: .rect(cornerRadius: 10))
+                                    .foregroundStyle(symbol == name ? color : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(name)
+                            .accessibilityAddTraits(symbol == name ? .isSelected : [])
+                        }
+                    }
+                }
+                Section("Renk") {
+                    HStack {
+                        ForEach(Array(colors.enumerated()), id: \.offset) { _, option in
+                            Button { color = option } label: {
+                                Circle().fill(option)
+                                    .frame(width: 32, height: 32)
+                                    .overlay { if option == color { Image(systemName: "checkmark").foregroundStyle(.white) } }
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                Section {
+                    Button("Kategoriyi sil", role: .destructive) { isDeleteConfirming = true }
+                        .confirmationDialog("\(category.name) silinsin mi?", isPresented: $isDeleteConfirming, titleVisibility: .visible) {
+                            Button("Sil", role: .destructive) {
+                                store.deleteCategory(category)
+                                dismiss()
+                            }
+                        } message: {
+                            Text("Bu kategorideki \(store.expenseCount(in: category)) harcama silinmez, “Diğer” kategorisine taşınır.")
+                        }
+                }
+            }
+            .navigationTitle(category.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Vazgeç", role: .cancel) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Kaydet") {
+                        if let index = store.categories.firstIndex(where: { $0.id == category.id }) {
+                            store.categories[index].limit = limit
+                            store.categories[index].symbol = symbol
+                            store.categories[index].color = color
+                        }
+                        dismiss()
+                    }
+                    .buttonStyle(.glassProminent)
+                }
+            }
+            .onAppear {
+                limit = category.limit
+                symbol = category.symbol
+                color = category.color
+            }
+        }
     }
 }
 

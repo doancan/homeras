@@ -161,6 +161,38 @@ struct Subscription: Identifiable, Hashable {
     var amount: Decimal
     var day: Int
     var symbol: String
+    var since: Date = Calendar.current.date(byAdding: .month, value: -14, to: .now) ?? .now
+    var nextRenewal: Date { PrototypeStore.nextOccurrence(of: day) }
+    var monthsActive: Int { max(1, Calendar.current.dateComponents([.month], from: since, to: .now).month ?? 1) }
+    var totalPaid: Decimal { amount * Decimal(monthsActive) }
+}
+
+/// A well-known service offered when adding a subscription (no brand logos: SF Symbols only).
+struct ServiceTemplate: Identifiable, Hashable {
+    var id: String { name }
+    let name: String
+    let group: String
+    let symbol: String
+    let typicalAmount: Decimal
+
+    static let catalog: [ServiceTemplate] = [
+        .init(name: "Netflix", group: "Dizi ve film", symbol: "play.tv", typicalAmount: 229.99),
+        .init(name: "Disney+", group: "Dizi ve film", symbol: "sparkles.tv", typicalAmount: 134.99),
+        .init(name: "Amazon Prime", group: "Dizi ve film", symbol: "shippingbox", typicalAmount: 69.90),
+        .init(name: "Exxen", group: "Dizi ve film", symbol: "sportscourt", typicalAmount: 199.90),
+        .init(name: "BluTV", group: "Dizi ve film", symbol: "film", typicalAmount: 149.90),
+        .init(name: "YouTube Premium", group: "Müzik", symbol: "play.rectangle", typicalAmount: 79.99),
+        .init(name: "Spotify Aile", group: "Müzik", symbol: "music.note", typicalAmount: 149.99),
+        .init(name: "iCloud+", group: "Bulut", symbol: "icloud", typicalAmount: 79.99),
+        .init(name: "Google One", group: "Bulut", symbol: "externaldrive", typicalAmount: 69.99),
+        .init(name: "Turkcell", group: "İletişim", symbol: "antenna.radiowaves.left.and.right", typicalAmount: 450),
+        .init(name: "Türk Telekom", group: "İletişim", symbol: "phone", typicalAmount: 420),
+        .init(name: "Superonline", group: "İletişim", symbol: "wifi", typicalAmount: 449),
+        .init(name: "Elektrik", group: "Faturalar", symbol: "bolt", typicalAmount: 1_240),
+        .init(name: "Doğalgaz", group: "Faturalar", symbol: "flame", typicalAmount: 1_870),
+        .init(name: "Su", group: "Faturalar", symbol: "drop", typicalAmount: 380),
+        .init(name: "Aidat", group: "Faturalar", symbol: "building.2", typicalAmount: 1_500),
+    ]
 }
 
 struct CardStatement: Identifiable, Hashable {
@@ -273,6 +305,54 @@ final class PrototypeStore {
             return (expense.title, expense.category, expense.amount)
         }
         .prefix(4).map { $0 }
+    }
+
+    /// Categories families add most, offered one tap away (Dime-style suggestions).
+    static let suggestedCategories: [(name: String, symbol: String, color: Color)] = [
+        ("Okul", "graduationcap", Color(red: 0.20, green: 0.40, blue: 0.80)),
+        ("Çocuk", "figure.and.child.holdinghands", Color(red: 0.85, green: 0.45, blue: 0.20)),
+        ("Kira", "house", Color(red: 0.45, green: 0.35, blue: 0.25)),
+        ("Kredi", "banknote", Color(red: 0.35, green: 0.35, blue: 0.40)),
+        ("Evcil hayvan", "pawprint", Color(red: 0.55, green: 0.40, blue: 0.20)),
+        ("Giyim", "tshirt", Color(red: 0.60, green: 0.30, blue: 0.55)),
+        ("Bağış", "heart", Color(red: 0.80, green: 0.25, blue: 0.35)),
+    ]
+
+    var availableSuggestions: [(name: String, symbol: String, color: Color)] {
+        Self.suggestedCategories.filter { suggestion in !categories.contains { $0.name == suggestion.name } }
+    }
+
+    func addCategory(name: String, symbol: String, color: Color, limit: Decimal = 1_000) {
+        guard !categories.contains(where: { $0.name == name }) else { return }
+        categories.append(BudgetCategory(name: name, symbol: symbol, color: color, spent: 0, limit: limit))
+    }
+
+    /// Deleting a category never deletes spending: its records move to "Diğer" (safer than Dime).
+    func deleteCategory(_ category: BudgetCategory) {
+        if !categories.contains(where: { $0.name == "Diğer" }) {
+            categories.append(BudgetCategory(name: "Diğer", symbol: "ellipsis.circle", color: .gray, spent: 0, limit: 0))
+        }
+        for index in expenses.indices where expenses[index].category == category.name {
+            expenses[index].category = "Diğer"
+        }
+        if let other = categories.firstIndex(where: { $0.name == "Diğer" }) { categories[other].spent += category.spent }
+        categories.removeAll { $0.id == category.id }
+    }
+
+    func expenseCount(in category: BudgetCategory) -> Int {
+        expenses.filter { $0.category == category.name }.count
+    }
+
+    /// The last expense added from quick add, kept briefly so the toast can undo it.
+    var lastAdded: Expense?
+
+    func undoLastAdded() {
+        guard let last = lastAdded else { return }
+        expenses.removeAll { $0.id == last.id }
+        if last.visibility != .personal, let index = categories.firstIndex(where: { $0.name == last.category }) {
+            categories[index].spent -= last.amount
+        }
+        lastAdded = nil
     }
 
     func addToList(usual name: String) {
@@ -719,9 +799,9 @@ final class PrototypeStore {
         title: String, amount: Decimal, category: String, visibility: Visibility = .household,
         paidBy: Member? = nil, date: Date = .now
     ) {
-        expenses.insert(
-            Expense(title: title, category: category, amount: amount, date: date, paidBy: paidBy ?? me, visibility: visibility),
-            at: 0)
+        let expense = Expense(title: title, category: category, amount: amount, date: date, paidBy: paidBy ?? me, visibility: visibility)
+        expenses.insert(expense, at: 0)
+        lastAdded = expense
         if visibility != .personal, let index = categories.firstIndex(where: { $0.name == category }) {
             categories[index].spent += amount
         }

@@ -47,6 +47,8 @@ struct BudgetView: View {
                 case "subscriptions": SubscriptionsView()
                 case "statements": StatementsView()
                 case "settle": SettlementView()
+                case "categories": CategoriesView()
+                case "addSubscription": AddSubscriptionSheet()
                 default: StatisticsView()
                 }
             }
