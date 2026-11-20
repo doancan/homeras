@@ -1,0 +1,27 @@
+# Throwaway UX prototype (spike). Not part of the product build or `make verify`.
+name: HomerasPrototype
+options:
+  bundleIdPrefix: app.homeras
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: tr
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    GENERATE_INFOPLIST_FILE: YES
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_IDENTITY: "-"
+targets:
+  HomerasPrototype:
+    type: application
+    platform: iOS
+    sources: [Sources, Assets.xcassets]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.homeras.prototype
+        INFOPLIST_KEY_CFBundleDisplayName: Homeras Proto
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
