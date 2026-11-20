@@ -35,15 +35,15 @@ Tasarım bileşenleri DesignSystem'e taşınır. Şema değişikliği migration 
 
 ---
 
-### Görev 1: DesignSystem temelleri ve Türkçe arama anahtarı
+### Task 1: DesignSystem temelleri ve Türkçe arama anahtarı
 
 **Dosyalar:**
-- Oluştur: `Packages/AppModules/Sources/Core/SearchKey.swift`, `Sources/DesignSystem/{IconBadge,MemberAvatar,ContentSwitcherStyle,UndoToast}.swift`, `Sources/DesignSystem/Resources/Colors.xcassets` (Warning, Mint)
+- Oluştur: `Packages/AppModules/Sources/Core/SearchKey.swift`, `Sources/DesignSystem/{IconBadge,ContentSwitcherStyle,UndoToast}.swift`, `Sources/DesignSystem/Resources/Colors.xcassets` (Warning, Mint)
 - Test: `Tests/CoreTests/SearchKeyTests.swift`, `Tests/DesignSystemTests/DesignSystemTests.swift`
 
 **Arayüzler — üretir:**
 - `extension String { var searchKey: String; func matchesSearch(_ query: String) -> Bool }` (Core)
-- `IconBadge(symbol: String, tint: Color)`, `MemberAvatar(initial: String, color: Color)`, `View.contentSwitcherStyle()`, `UndoToast(title: String, onUndo: () -> Void)`, `Color.homerasWarning`, `Color.homerasMint` (DesignSystem)
+- `IconBadge(symbol: String, tint: Color)`, `View.contentSwitcherStyle()`, `UndoToast(title: String, onUndo: () -> Void)`, `Color.homerasWarning`, `Color.homerasMint` (DesignSystem)
 
 - [ ] Test: `"HDMI kablo".matchesSearch("hdmi")`, `"KILIF".matchesSearch("kılıf")`, `"İzmir".matchesSearch("izmir")`, `"Süt".matchesSearch("")` → hepsi `true`; `"Süt".matchesSearch("ekmek")` → `false`
 - [ ] Çalıştır `make test-packages` → FAIL (tip yok)
@@ -52,22 +52,22 @@ Tasarım bileşenleri DesignSystem'e taşınır. Şema değişikliği migration 
 - [ ] DesignSystem catalog'una `action.undo` ("Geri al" / "Undo") ve test listesine ekle
 - [ ] `make test-packages` → PASS · Commit: `feat(design): add shared components and Turkish-insensitive search`
 
-### Görev 2: Şema — kategori, not, sepete alma, silme
+### Task 2: Şema — kategori, not, sepete alma, silme
 
 **Dosyalar:**
 - Oluştur: `supabase/migrations/20261121090000_shopping_items_category_and_cart.sql`
 - Test: `supabase/tests/database/shopping_cart.test.sql`
 
-**Arayüzler — üretir:** `shopping_items.category text not null default 'Diğer'` (1–40, trim),
+**Arayüzler — üretir:** `shopping_items.category text not null default 'other'` (CHECK: `produce, dairy, bakery, pantry, cleaning, personalCare, other`),
 `note text` (≤ 60), `in_cart_at timestamptz null`, `in_cart_by uuid null` (trigger `auth.uid()` atar);
 GRANT `update (category, note, in_cart_at)`, `delete` üyelere; politikalar `shopping_items_update_member`, `shopping_items_delete_member`.
 
-- [ ] pgTAP: üye sepete alır (`in_cart_at` set, `in_cart_by` = çağıran); üye geri alır (null); başka ev üyesi update → 0 satır / 42501; başka ev delete → etkisiz; anon update/delete → 42501; istemci `in_cart_by`'yi yazamaz (kolon GRANT'ı yok → 42501); boş kategori → 23514
+- [ ] pgTAP: üye sepete alır (`in_cart_at` set, `in_cart_by` = çağıran); üye geri alır (null); başka ev üyesi update → 0 satır / 42501; başka ev delete → etkisiz; anon update/delete → 42501; istemci `in_cart_by`'yi yazamaz (kolon GRANT'ı yok → 42501); listede olmayan kategori → 23514
 - [ ] `make verify-db` → FAIL
 - [ ] Migration (kolonlar `add column ... default` ile geriye uyumlu), trigger `private.set_in_cart_by()`, politikalar ve GRANT'lar
 - [ ] `make verify-db` → PASS · Commit: `feat(db): add shopping item category, note and cart state`
 
-### Görev 3: Core ve Supabase adapter
+### Task 3: Core ve Supabase adapter
 
 **Dosyalar:**
 - Değiştir: `Sources/Core/ShoppingItem.swift`, `Sources/Core/Ports.swift`, `Sources/SupabaseBackend/{Rows,SupabaseShoppingListRepository}.swift`
@@ -76,7 +76,7 @@ GRANT `update (category, note, in_cart_at)`, `delete` üyelere; politikalar `sho
 
 **Arayüzler — üretir:**
 - `ShoppingItem` + `aisle: ShoppingAisle`, `note: String?`, `inCartAt: Date?`, `addedBy: UserID?`; `var isInCart: Bool`
-- `enum ShoppingAisle: String, CaseIterable { produce = "Manav", dairy = "Süt ve kahvaltı", bakery = "Fırın", pantry = "Kiler", cleaning = "Temizlik", personalCare = "Kişisel bakım", other = "Diğer" }` — `CaseIterable` sırası = mağaza yürüyüş sırası
+- `enum ShoppingAisle: String, CaseIterable { produce, dairy, bakery, pantry, cleaning, personalCare, other }` — ham değerler kalıcı anahtar; `CaseIterable` sırası = mağaza yürüyüş sırası; görünen adlar ShoppingFeature catalog'unda (tr: Manav, Süt ve kahvaltı, Fırın, Kiler, Temizlik, Kişisel bakım, Diğer)
 - `ShoppingItemDraft(name:aisle:note:)`
 - `ShoppingListRepository`: `setInCart(_ id: ShoppingItemID, _ inCart: Bool, household: HouseholdID) async throws(RepositoryError) -> ShoppingItem`, `remove(_ id: ShoppingItemID, household: HouseholdID) async throws(RepositoryError)`
 - `RepositoryError.notFound` (yeni durum; DesignSystem mesajı "Bu öğe artık listede değil.")
@@ -85,7 +85,7 @@ GRANT `update (category, note, in_cart_at)`, `delete` üyelere; politikalar `sho
 - [ ] FAIL'i gör → uygula (`setInCart` PATCH `in_cart_at = now()|null`; dönen 0 satır → `notFound`) → `make test-packages` ve `make verify-integration` PASS
 - [ ] Commit: `feat(shopping): support aisles, cart state and removal end to end`
 
-### Görev 4: ShoppingFeature — onaylı ekran
+### Task 4: ShoppingFeature — onaylı ekran
 
 **Dosyalar:**
 - Değiştir: `Sources/ShoppingFeature/{ShoppingListModel,ShoppingListView}.swift`, `Resources/Localizable.xcstrings`
@@ -96,11 +96,11 @@ GRANT `update (category, note, in_cart_at)`, `delete` üyelere; politikalar `sho
 
 - [ ] Model testleri: gruplar `ShoppingAisle.allCases` sırasında; sepete alma iyimser (anında taşınır), hata gelirse geri döner ve `actionError` set olur; `notFound` → öğe listeden düşer; "Geri al" ikinci kez çağrıldığında etkisiz; çift dokunuşta tek istek
 - [ ] FAIL → uygula → PASS
-- [ ] View: prototipteki düzen (gruplu bölümler, "Sepette · N", satıra dokununca sepete, kaydırınca sil, ekleyen avatarı), loading/empty/error, VoiceOver değerleri ("Sepette"/"Alınacak"), en büyük yazıda dikey yerleşim
+- [ ] View: prototipteki düzen (gruplu bölümler, "Sepette · N", satıra dokununca sepete, kaydırınca sil; kendi eklediklerinizde "Siz" etiketi — üye adları/avatarları Plan 2'de), loading/empty/error, VoiceOver değerleri ("Sepette"/"Alınacak"), en büyük yazıda dikey yerleşim
 - [ ] `AddShoppingItemSheet`: ad (1–120), reyon çipleri, not; ekle düğmesi altta; kayıttan sonra `UndoToast`
 - [ ] Commit: `feat(shopping): approved shopping list with aisles, cart and undo`
 
-### Görev 5: Uygulama iskeleti
+### Task 5: Uygulama iskeleti
 
 **Dosyalar:**
 - Değiştir: `App/RootView.swift`, `App/RootModel.swift`, `App/Localizable.xcstrings`
@@ -108,14 +108,14 @@ GRANT `update (category, note, in_cart_at)`, `delete` üyelere; politikalar `sho
 - Test: `AppTests/RootModelTests.swift`
 
 **Arayüzler — tüketir:** Görev 4'ün `ShoppingListView`, `AddShoppingItemSheet`.
-**Üretir:** `MainTabs(model:)` — şimdilik yalnızca gerçek içeriği olan sekmeler: **Alışveriş**; sağ üstte `+` (Alışveriş ekleme sheet'i) ve Aile düğmesi (`FamilySheet`: üyeler ve çıkış; hesap silme FR-007 dilimiyle eklenir). Diğer sekmeler kendi dilimleriyle eklenir (taslak sekme yok).
+**Üretir:** `MainTabs(model:)` — şimdilik yalnızca gerçek içeriği olan sekmeler: **Alışveriş**; sağ üstte `+` (Alışveriş ekleme sheet'i) ve Aile düğmesi (`FamilySheet`: ev adı, oturumdaki hesabın e-postası ve çıkış; üye listesi ve davet Plan 2'de, hesap silme FR-007 dilimiyle). Diğer sekmeler kendi dilimleriyle eklenir (taslak sekme yok).
 
 - [ ] RootModel testi: oturum + ev varsa ekran `.main` olur ve alışveriş modeli aynı evi kullanır
 - [ ] FAIL → uygula → PASS (`make verify`)
 - [ ] Gerçek cihazda kontrol: iki hesapla (e-posta OTP, yerel Supabase) ekleme, sepete alma, silme, geri alma; açık/koyu, en büyük yazı; iOS 27.2 (iOS 26: README'de "Doğrulanmadı")
 - [ ] Commit: `feat(app): tab shell with trailing add action and family sheet`
 
-### Görev 6: Docs ve doğrulama
+### Task 6: Docs ve doğrulama
 
 - [ ] `overview.md` modül tablosu ve "Kalıcı veri" (yeni kolonlar, politikalar, indeks kararı: `(household_id, in_cart_at)` gerekmez — liste ≤ 50 sayfalı, mevcut indeks yeterli)
 - [ ] `requirements.md`: FR-040 Tamamlandı, FR-041 Tamamlandı; README "Mevcut durum" ve "Sonraki adımlar" (Plan 2: Aile ve davet)
