@@ -41,6 +41,9 @@ RLS ile izole edilir. Çalışma adıdır, marka kararı açık (Q-001).
 
 ## Sonraki adımlar
 
+0. **Doğrulanmadı:** iOS 26 görünümü (ADR-0007). Ekranlar yalnızca iOS 27.2 simülatöründe
+   görüldü, çünkü bu makinede iOS 26 runtime'ı kurulu değil. Kurulum:
+   `xcodebuild -downloadPlatform iOS -buildVersion 26.3`.
 1. Q-007: UX prototipi. Sekme yapısı, ana sayfa ve akışlar, kod yazılmadan önce tıklanabilir
    prototip üzerinden konuşulacak.
 2. FR-004/FR-005: aile daveti (hash'li, tek kullanımlık, 72 saat geçerli kod), ardından
