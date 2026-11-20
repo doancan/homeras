@@ -77,7 +77,8 @@ struct ShoppingView: View {
             .toolbar {
                 if !inCart.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Bitir") { isFinishPresented = true }
+                        Button("Bitir", systemImage: "checkmark") { isFinishPresented = true }
+                            .labelStyle(.titleAndIcon)
                             .buttonStyle(.glassProminent)
                     }
                 }

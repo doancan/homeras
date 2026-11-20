@@ -1,5 +1,18 @@
 import SwiftUI
 
+extension View {
+    /// A picker that switches the content below it. iOS 27 draws it as tabs and VoiceOver
+    /// announces it as tabs; iOS 26 falls back to the segmented look (ADR-0007).
+    @ViewBuilder
+    func contentSwitcherStyle() -> some View {
+        if #available(iOS 27.0, *) {
+            pickerStyle(.tabs)
+        } else {
+            pickerStyle(.segmented)
+        }
+    }
+}
+
 /// A tinted SF Symbol tile used at the start of rows (content layer, no glass).
 struct IconBadge: View {
     let symbol: String

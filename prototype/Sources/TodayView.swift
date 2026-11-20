@@ -77,7 +77,13 @@ struct TodayView: View {
                     Button {
                         isFamilyPresented = true
                     } label: {
-                        FamilyAvatars(members: store.members)
+                        // Title + icon so the item still reads when bars move to the side on iPhone Duo.
+                        Label {
+                            Text("Aile")
+                        } icon: {
+                            FamilyAvatars(members: store.members)
+                        }
+                        .labelStyle(.iconOnly)
                     }
                     .accessibilityLabel("Aile ve ayarlar")
                 }

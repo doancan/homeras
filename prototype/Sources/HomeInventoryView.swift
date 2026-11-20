@@ -19,7 +19,7 @@ struct HomeInventoryView: View {
                     Picker("Görünüm", selection: $mode) {
                         ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
                     }
-                    .pickerStyle(.segmented)
+                    .contentSwitcherStyle()
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                 }
@@ -205,7 +205,7 @@ struct BelongingDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Düzenle") {}
+                Button("Düzenle", systemImage: "pencil") {}
             }
         }
     }
