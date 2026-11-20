@@ -139,7 +139,7 @@ Alan bazında S2 seviyesindeki işler başlamadan önce `features/<slug>.md` spe
 | Q-005 | Apple Developer Team ID ve bundle id (`com.<?>.homeras`) | Doğancan | FR-002 dilimi | — |
 | Q-006 | Üretim Supabase projesi kimin hesabında, hangi organizasyonda açılacak? | Doğancan | İlk TestFlight build'i | — |
 | Q-008 | FinanceKit / Apple Wallet işlem erişimi Türk banka kartları için mümkün mü? | Doğancan | FR-076 dilimi | — |
-| Q-007 | Uygulamanın UX'i ve bilgi mimarisi (sekme yapısı, ana sayfa, ekran akışları, görsel dil) ne olacak? Önce tıklanabilir prototip yapılıp üzerinde konuşulacak. Walking skeleton ekranları teknik iskelettir, UX onayı yoktur. Başlangıç girdisi (ilk taslak): beş ana ekran: Ana Sayfa (aylık bütçe, yaklaşan ödemeler, azalan stoklar), Finans (gelir/gider, bütçe, kategori, analiz), Ev (envanter, demirbaş, konum, stok), Alışveriş (ortak ve tamamlanan listeler), Aile (üyeler, görevler, takvim, ev ve hesap ayarları) | Doğancan | Bir sonraki ekran dilimi başlamadan önce | — |
+| Q-007 | Uygulamanın UX'i ve bilgi mimarisi (sekme yapısı, ana sayfa, ekran akışları, görsel dil) ne olacak? Önce tıklanabilir prototip yapılıp üzerinde konuşulacak. Walking skeleton ekranları teknik iskelettir, UX onayı yoktur. Başlangıç girdisi (ilk taslak): beş ana ekran: Ana Sayfa (aylık bütçe, yaklaşan ödemeler, azalan stoklar), Finans (gelir/gider, bütçe, kategori, analiz), Ev (envanter, demirbaş, konum, stok), Alışveriş (ortak ve tamamlanan listeler), Aile (üyeler, görevler, takvim, ev ve hesap ayarları) | Doğancan | Bir sonraki ekran dilimi başlamadan önce | Kapandı 2026-11-20: tasarım onaylandı → [app-experience.md](features/app-experience.md) (prototip etiketi `ux-prototype-v1`) |
 
 ## Kapsam dışı
 

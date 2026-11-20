@@ -18,9 +18,7 @@ RLS ile izole edilir. Çalışma adıdır, marka kararı açık (Q-001).
   - 78 paket unit testi + 14 app testi.
   - 22 pgTAP RLS/tenant testi.
   - Yerel Supabase'e karşı 6 uçtan uca test.
-- **UX onaylanmadı:** Giriş, ev oluşturma ve liste ekranları teknik iskelettir. Arayüz ve bilgi
-  mimarisi, tıklanabilir bir prototip üzerinden konuşulup yeniden tasarlanacak (Q-007). Bu
-  ekranlara yeni tasarım yatırımı yapılmaz.
+- **UX onaylandı:** [features/app-experience.md](product/features/app-experience.md); referans prototip `ux-prototype-v1` etiketinde. Mevcut ürün ekranları bu tasarıma taşınacak.
 - **Uygulama ikonu:** `design/logo-v1.svg` kaynağından üretilen geçici ikon (v1). Marka kararı
   Q-001'de açık.
 - **Eksik:**
@@ -45,8 +43,7 @@ RLS ile izole edilir. Çalışma adıdır, marka kararı açık (Q-001).
 0. **Doğrulanmadı:** iOS 26 görünümü (ADR-0007). Ekranlar yalnızca iOS 27.2 simülatöründe
    görüldü, çünkü bu makinede iOS 26 runtime'ı kurulu değil. Kurulum:
    `xcodebuild -downloadPlatform iOS -buildVersion 26.3`.
-1. Q-007: UX prototipi. Sekme yapısı, ana sayfa ve akışlar, kod yazılmadan önce tıklanabilir
-   prototip üzerinden konuşulacak.
+1. Onaylı tasarımı ürüne taşımak (app-experience.md): sekme yapısı, Hızlı ekle, Bugün dashboard'u; ardından finans dilimi (household-finance.md, ADR-0009).
 2. FR-004/FR-005: aile daveti (hash'li, tek kullanımlık, 72 saat geçerli kod), ardından
    FR-041 (alındı işaretleme).
 3. FR-002: Sign in with Apple (Q-005 Team ID gelince), TD-002, ilk TestFlight.
