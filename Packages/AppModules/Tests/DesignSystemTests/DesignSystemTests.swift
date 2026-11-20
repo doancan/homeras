@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import SwiftUI
 import TestSupport
 import Testing
 
@@ -36,5 +37,22 @@ struct DesignSystemTests {
 
     @Test func offlineAuthAndRepositoryMessagesMatch() {
         #expect(AuthError.offline.userMessage == RepositoryError.offline.userMessage)
+    }
+
+    @Test func undoActionIsTranslated() {
+        let undo = String(localized: "action.undo", bundle: .designSystem)
+        #expect(undo == "Geri al" || undo == "Undo")
+    }
+
+    @Test func semanticColoursResolveFromTheCatalog() {
+        var light = EnvironmentValues()
+        light.colorScheme = .light
+        var dark = EnvironmentValues()
+        dark.colorScheme = .dark
+        // A colour missing from the catalog resolves to transparent black.
+        for color in [Color.homerasWarning, Color.homerasMint] {
+            #expect(color.resolve(in: light).opacity > 0)
+            #expect(color.resolve(in: light).red != color.resolve(in: dark).red)
+        }
     }
 }

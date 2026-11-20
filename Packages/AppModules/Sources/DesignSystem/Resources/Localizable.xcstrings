@@ -18,6 +18,23 @@
         }
       }
     },
+    "action.undo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Undo"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri al"
+          }
+        }
+      }
+    },
     "error.alreadyInHousehold": {
       "extractionState": "manual",
       "localizations": {
