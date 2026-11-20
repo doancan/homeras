@@ -87,6 +87,12 @@ tekrarlanmaz.
 
 ## UI
 
+- iOS 27 HIG'e göre tasarlanır, minimum iOS 26.0'dır ([ADR-0007](../decisions/0007-ios-27-sdk-and-hig-with-ios-26-floor.md)).
+  iOS 27 API'si yalnızca `if #available(iOS 27.0, *)` ile ve iOS 26 karşılığıyla kullanılır. Ekranlar
+  iOS 26 ve iOS 27 simülatörlerinde görülerek kabul edilir.
+- Kullanımdan kalkan API'ler yerine güncelleri kullanılır: `ScrollView(_:)` + `.scrollIndicators`,
+  `overlay(alignment:content:)`, `toolbarVisibility(_:for:)`, `#Preview`.
+- iPhone Duo: sistem bar'ları varsayılan yerinde kalır, her toolbar öğesinin başlığı ve sembolü olur.
 - Sistem bileşenleri önce gelir: `NavigationStack`, `Form`, `List`, `ContentUnavailableView`.
   Liquid Glass yalnızca fonksiyonel katmanda kullanılır (bar, toolbar, yüzen aksiyonlar); satırlarda
   ve kartlarda kullanılmaz.
