@@ -12,6 +12,7 @@ struct IconBadge: View {
             .foregroundStyle(tint)
             .frame(width: size, height: size)
             .background(tint.opacity(0.14), in: .rect(cornerRadius: 8))
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .accessibilityHidden(true)
     }
 }
@@ -25,7 +26,9 @@ struct MemberAvatar: View {
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(member.color.gradient, in: .circle)
+            .background(member.color, in: .circle)
+            // Decorative: capped so it never squeezes the text it sits next to.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .accessibilityLabel(member.name)
     }
 }

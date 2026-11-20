@@ -101,8 +101,8 @@ final class PrototypeStore {
 
     init() {
         let elif = Member(name: "Elif", role: "Sahip", color: .indigo)
-        let can = Member(name: "Can", role: "Üye", color: .orange)
-        let deniz = Member(name: "Deniz", role: "Üye", color: .teal)
+        let can = Member(name: "Can", role: "Üye", color: Color(red: 0.70, green: 0.33, blue: 0.10))
+        let deniz = Member(name: "Deniz", role: "Üye", color: Color(red: 0.08, green: 0.45, blue: 0.47))
         members = [elif, can, deniz]
 
         let calendar = Calendar.current
@@ -202,7 +202,92 @@ final class PrototypeStore {
     // MARK: Derived
 
     var spentThisMonth: Decimal { categories.reduce(0) { $0 + $1.spent } }
-    var lowStock: [StockItem] { stock.filter(\.isLow) }
+    /// Out of stock first, then the lowest relative to its minimum.
+    var lowStock: [StockItem] {
+        stock.filter(\.isLow).sorted { lhs, rhs in
+            if (lhs.quantity == 0) != (rhs.quantity == 0) { return lhs.quantity == 0 }
+            return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        }
+    }
+    var monthName: String { Date.now.formatted(.dateTime.month(.wide)) }
+    var upcomingTotal: Decimal { payments.reduce(0) { $0 + $1.amount } }
+    var watchedCategories: [BudgetCategory] {
+        categories.filter { $0.ratio >= 0.85 }.sorted { $0.ratio > $1.ratio }
+    }
+    var expiringWarranties: [Belonging] {
+        belongings.filter { ($0.warrantyEnds?.timeIntervalSinceNow ?? .infinity) < 60 * 60 * 24 * 31 }
+    }
+
+    struct SpendPoint { let day: Date; let amount: Double }
+
+    private static let dailySpend: [Double] = [
+        620, 180, 1_240, 0, 950, 310, 2_150, 120, 0, 640, 480, 1_870, 365, 320, 2_190, 460, 1_380, 2_050, 2_253, 842,
+    ]
+
+    /// Cumulative spending from the 1st of the month to today (sample data).
+    var cumulativeSpending: [SpendPoint] {
+        let calendar = Calendar.current
+        let today = calendar.component(.day, from: .now)
+        let start = calendar.date(from: calendar.dateComponents([.year, .month], from: .now)) ?? .now
+        var total = 0.0
+        return (0..<min(today, Self.dailySpend.count)).map { index in
+            total += Self.dailySpend[index]
+            let day = calendar.date(byAdding: .day, value: index, to: start) ?? start
+            return SpendPoint(day: day, amount: total)
+        }
+    }
+
+    /// An even pace from zero to the monthly budget on the last day.
+    var budgetPace: [SpendPoint] {
+        let calendar = Calendar.current
+        let start = calendar.date(from: calendar.dateComponents([.year, .month], from: .now)) ?? .now
+        let length = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
+        let end = calendar.date(byAdding: .day, value: length - 1, to: start) ?? start
+        let budget = NSDecimalNumber(decimal: monthlyBudget).doubleValue
+        return [SpendPoint(day: start, amount: 0), SpendPoint(day: end, amount: budget)]
+    }
+
+    var plannedByToday: Decimal {
+        let calendar = Calendar.current
+        let length = calendar.range(of: .day, in: .month, for: .now)?.count ?? 30
+        let today = calendar.component(.day, from: .now)
+        return monthlyBudget * Decimal(today) / Decimal(length)
+    }
+
+    struct UpcomingEvent: Identifiable {
+        let id = UUID()
+        let date: Date
+        let title: String
+        let detail: String
+        let amount: Decimal?
+        let symbol: String
+    }
+
+    /// Payments, reminders and warranty ends on one timeline, soonest first.
+    var upcoming: [UpcomingEvent] {
+        let fromPayments = payments.map {
+            UpcomingEvent(date: $0.due, title: $0.title, detail: "Ödeme", amount: $0.amount, symbol: $0.symbol)
+        }
+        let fromReminders = reminders.map {
+            UpcomingEvent(date: $0.due, title: $0.title, detail: $0.detail, amount: nil, symbol: $0.symbol)
+        }
+        return (fromPayments + fromReminders).sorted { $0.date < $1.date }.prefix(5).map { $0 }
+    }
+
+    struct Activity: Identifiable {
+        let id = UUID()
+        let member: Member
+        let text: String
+        let date: Date
+    }
+
+    var activity: [Activity] {
+        [
+            Activity(member: members[1], text: "listeye Süt ve Domates ekledi", date: .now.addingTimeInterval(-60 * 25)),
+            Activity(member: members[0], text: "Migros alışverişini kaydetti · ₺842,50", date: .now.addingTimeInterval(-60 * 60 * 3)),
+            Activity(member: members[2], text: "Muz ekledi", date: .now.addingTimeInterval(-60 * 60 * 20)),
+        ]
+    }
     var cartCount: Int { shopping.filter(\.isInCart).count }
     var remainingDays: Int {
         let calendar = Calendar.current
@@ -284,6 +369,14 @@ extension String {
 
     func matchesSearch(_ query: String) -> Bool {
         query.isEmpty || searchKey.contains(query.searchKey)
+    }
+}
+
+extension Double {
+    /// Axis label in plain Turkish: "0", "500", "12,5 bin", "25 bin" (no ambiguous "B").
+    var thousandsLabel: String {
+        guard self >= 1_000 else { return formatted(.number.precision(.fractionLength(0))) }
+        return "\((self / 1_000).formatted(.number.precision(.fractionLength(0...1)))) bin"
     }
 }
 

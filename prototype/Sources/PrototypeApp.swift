@@ -26,20 +26,20 @@ struct RootTabs: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            Tab("Bugün", systemImage: "house", value: AppTab.today) {
+            Tab("Bugün", systemImage: "square.grid.2x2", value: AppTab.today) {
                 TodayView(selection: $selection)
             }
             Tab("Alışveriş", systemImage: "cart", value: AppTab.shopping) {
                 ShoppingView()
             }
             .badge(store.shopping.filter { !$0.isInCart }.count)
-            Tab("Ev", systemImage: "shippingbox", value: AppTab.home) {
+            Tab("Ev", systemImage: "house", value: AppTab.home) {
                 HomeInventoryView()
             }
             Tab("Bütçe", systemImage: "chart.pie", value: AppTab.budget) {
                 BudgetView()
             }
-            Tab(value: AppTab.search, role: .search) {
+            Tab("Ara", systemImage: "magnifyingglass", value: AppTab.search, role: .search) {
                 SearchView()
             }
         }

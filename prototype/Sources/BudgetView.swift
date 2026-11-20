@@ -9,6 +9,7 @@ struct BudgetView: View {
     }
 
     @Environment(PrototypeStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var scope = Demo.value("demo") == "personal" ? Scope.personal : Scope.shared
 
     private var expenses: [Expense] {
@@ -29,13 +30,19 @@ struct BudgetView: View {
 
                 switch scope {
                 case .shared:
-                    Section { summary }
+                    Section {
+                        summary
+                    } footer: {
+                        Text("Bu ay ortak gelir: \(store.monthlyIncome.lira)")
+                    }
                     Section("Son 14 gün") { spendingChart }
                     Section("Kategoriler") {
                         ForEach(store.categories) { CategoryRow(category: $0) }
                     }
                 case .personal:
                     Section {
+                        LabeledContent("Bu ay kişisel", value: expenses.reduce(Decimal(0)) { $0 + $1.amount }.lira)
+                            .monospacedDigit()
                         Label {
                             Text("Kişisel harcamalarınızı yalnızca siz görürsünüz. Aile üyeleri bu kayıtlara erişemez.")
                                 .font(.subheadline)
@@ -48,14 +55,16 @@ struct BudgetView: View {
 
                 Section("Hareketler") {
                     if expenses.isEmpty {
-                        Text("Bu ay kayıt yok.")
-                            .foregroundStyle(.secondary)
+                        ContentUnavailableView(
+                            "Bu ay kayıt yok", systemImage: "tray",
+                            description: Text("“Hızlı ekle” ile harcama ekleyin."))
                     }
                     ForEach(expenses) { ExpenseRow(expense: $0) }
                 }
             }
+            .listSectionSpacing(.compact)
             .navigationTitle("Bütçe")
-            .navigationSubtitle("Kasım 2026")
+            .navigationSubtitle(Date.now.formatted(.dateTime.month(.wide).year()))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -69,15 +78,27 @@ struct BudgetView: View {
         }
     }
 
+    /// Budget, spent and what is left of the budget: three numbers that add up.
+    @ViewBuilder
     private var summary: some View {
-        HStack(spacing: 0) {
-            figure("Gelir", store.monthlyIncome, tint: .secondary)
-            Divider()
-            figure("Gider", store.spentThisMonth, tint: .primary)
-            Divider()
-            figure("Kalan", store.monthlyBudget - store.spentThisMonth, tint: Color.accentColor)
+        let remaining = store.monthlyBudget - store.spentThisMonth
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                LabeledContent("Bütçe", value: store.monthlyBudget.lira)
+                LabeledContent("Harcanan", value: store.spentThisMonth.lira)
+                LabeledContent("Kalan", value: remaining.lira)
+            }
+            .monospacedDigit()
+        } else {
+            HStack(spacing: 0) {
+                figure("Bütçe", store.monthlyBudget, tint: .primary)
+                Divider()
+                figure("Harcanan", store.spentThisMonth, tint: .primary)
+                Divider()
+                figure("Kalan", remaining, tint: Color.accentColor)
+            }
+            .padding(.vertical, 6)
         }
-        .padding(.vertical, 6)
     }
 
     private func figure(_ title: String, _ amount: Decimal, tint: Color) -> some View {
@@ -110,19 +131,20 @@ struct BudgetView: View {
         .chartYAxis {
             AxisMarks(position: .leading) { value in
                 AxisGridLine()
-                AxisValueLabel {
+AxisValueLabel {
                     if let amount = value.as(Double.self) {
-                        Text(amount, format: .number.notation(.compactName))
+                        Text(amount.thousandsLabel)
                     }
                 }
             }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 4)) {
+            AxisMarks(values: .stride(by: .day, count: typeSize.isAccessibilitySize ? 7 : 4)) {
                 AxisValueLabel(format: .dateTime.day().month(.abbreviated))
             }
         }
         .frame(height: 160)
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         .padding(.vertical, 6)
         .accessibilityLabel("Son 14 günün günlük harcama grafiği")
     }

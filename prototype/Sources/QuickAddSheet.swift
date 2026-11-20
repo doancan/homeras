@@ -85,7 +85,7 @@ struct QuickAddSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Kapat", role: .close) { dismiss() }
+                    Button("Vazgeç", role: .cancel) { dismiss() }
                 }
                 if kind != .stock {
                     ToolbarItem(placement: .confirmationAction) {

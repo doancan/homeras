@@ -60,8 +60,8 @@ struct FamilySheet: View {
             .navigationTitle("Aile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Bitti") { dismiss() }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .close) { dismiss() }
                 }
             }
             .sheet(isPresented: $isInvitePresented) {
@@ -101,7 +101,7 @@ private struct InviteSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Kapat", role: .close) { dismiss() }
+                    Button(role: .close) { dismiss() }
                 }
             }
         }

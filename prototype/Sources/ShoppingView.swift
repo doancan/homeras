@@ -8,9 +8,16 @@ struct ShoppingView: View {
 
     private var pending: [ShoppingEntry] { store.shopping.filter { !$0.isInCart } }
     private var inCart: [ShoppingEntry] { store.shopping.filter(\.isInCart) }
+    /// A store walk, not the alphabet: produce first, cleaning last, anything else after.
+    private static let aisleOrder = ["Manav", "Süt ve kahvaltı", "Temizlik", "Stoktan", "Diğer"]
+
     private var groups: [(String, [ShoppingEntry])] {
         Dictionary(grouping: pending, by: \.category)
-            .sorted { $0.key < $1.key }
+            .sorted { lhs, rhs in
+                let left = Self.aisleOrder.firstIndex(of: lhs.key) ?? Self.aisleOrder.count
+                let right = Self.aisleOrder.firstIndex(of: rhs.key) ?? Self.aisleOrder.count
+                return left == right ? lhs.key.localizedStandardCompare(rhs.key) == .orderedAscending : left < right
+            }
             .map { ($0.key, $0.value) }
     }
     private var suggestions: [StockItem] { store.lowStock.filter { !store.isOnList($0) } }

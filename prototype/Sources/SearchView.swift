@@ -47,11 +47,14 @@ struct SearchView: View {
             Section("Eşyalar") {
                 ForEach(belongings) { item in
                     NavigationLink(value: item) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.name)
-                            Label(item.path.joined(separator: " › "), systemImage: "mappin.circle.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(Color.accentColor)
+                        HStack(spacing: 12) {
+                            IconBadge(symbol: item.symbol, tint: .accentColor)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                Text(item.path.joined(separator: " › "))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

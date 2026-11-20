@@ -29,6 +29,7 @@ struct HomeInventoryView: View {
                 case .belongings: belongingSections
                 }
             }
+            .listSectionSpacing(.compact)
             .navigationTitle("Ev")
             .searchable(text: $query, prompt: mode == .stock ? "Stokta ara" : "Eşya ya da konum ara")
             .navigationDestination(for: Belonging.self) { BelongingDetailView(item: $0) }
@@ -47,7 +48,7 @@ struct HomeInventoryView: View {
     @ViewBuilder
     private var stockSections: some View {
         let items = store.stock.filter { matches($0.name) || matches($0.place) }
-        let places = Array(Set(items.map(\.place))).sorted()
+        let places = Array(Set(items.map(\.place))).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         ForEach(places, id: \.self) { place in
             Section(place) {
                 ForEach(items.filter { $0.place == place }) { item in
@@ -60,7 +61,7 @@ struct HomeInventoryView: View {
     @ViewBuilder
     private var belongingSections: some View {
         let items = store.belongings.filter { matches($0.name) || $0.path.contains(where: matches) }
-        let rooms = Array(Set(items.map(\.room))).sorted()
+        let rooms = Array(Set(items.map(\.room))).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         ForEach(rooms, id: \.self) { room in
             Section(room) {
                 ForEach(items.filter { $0.room == room }) { item in
@@ -69,7 +70,8 @@ struct HomeInventoryView: View {
                             IconBadge(symbol: item.symbol, tint: .accentColor)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name)
-                                Text(item.path.joined(separator: " › "))
+                                // The room is the section header; show only where inside it.
+                                Text(item.path.count > 1 ? item.path.dropFirst().joined(separator: " › ") : "Odada")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -83,61 +85,62 @@ struct HomeInventoryView: View {
 
 private struct StockRow: View {
     @Environment(PrototypeStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var typeSize
     let item: StockItem
 
-    var body: some View {
-        HStack(spacing: 12) {
-            IconBadge(symbol: item.symbol, tint: item.isLow ? Color("Warning") : .accentColor)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.name)
-                HStack(spacing: 6) {
-                    Text("\(item.quantity) \(item.unit)")
-                        .monospacedDigit()
-                    if item.isLow {
-                        Text("Azaldı")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color("Warning"))
-                    }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            }
-            Spacer()
-            HStack(spacing: 4) {
-                stepButton("minus", delta: -1)
-                    .disabled(item.quantity == 0)
-                stepButton("plus", delta: 1)
-            }
-        }
-        .accessibilityElement(children: .contain)
+    private var quantity: Binding<Int> {
+        Binding(
+            get: { item.quantity },
+            set: { newValue in withAnimation(.snappy) { store.adjust(item, by: newValue - item.quantity) } })
     }
 
-    private func stepButton(_ symbol: String, delta: Int) -> some View {
-        Button {
-            withAnimation(.snappy) { store.adjust(item, by: delta) }
-        } label: {
-            Image(systemName: symbol)
-                .font(.subheadline.weight(.semibold))
-                .frame(width: 32, height: 32)
+    var body: some View {
+        // Side by side normally; stacked at accessibility sizes so the name never breaks mid-word.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 12))
+        layout {
+            HStack(spacing: 12) {
+                IconBadge(symbol: item.symbol, tint: item.isLow ? Color("Warning") : .accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                    HStack(spacing: 6) {
+                        Text(item.quantity == 0 ? "Bitti" : "\(item.quantity) \(item.unit)")
+                            .monospacedDigit()
+                        if item.isLow && item.quantity > 0 {
+                            Text("· Azaldı")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(Color("Warning"))
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
+            Stepper(value: quantity, in: 0...999) {
+                Text("\(item.name) miktarı")
+            }
+            .labelsHidden()
+            .accessibilityValue("\(item.quantity) \(item.unit)")
+            .sensoryFeedback(.selection, trigger: item.quantity)
         }
-        .buttonStyle(.bordered)
-        .buttonBorderShape(.circle)
-        .accessibilityLabel(delta > 0 ? "\(item.name) bir artır" : "\(item.name) bir azalt")
-        .sensoryFeedback(.increase, trigger: item.quantity)
     }
 }
 
 struct BelongingDetailView: View {
     let item: Belonging
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize = 88
 
     var body: some View {
         List {
             Section {
                 VStack(spacing: 12) {
                     Image(systemName: item.symbol)
-                        .font(.system(size: 44, weight: .regular))
+                        .font(.largeTitle)
+                        .imageScale(.large)
                         .foregroundStyle(Color.accentColor)
-                        .frame(width: 88, height: 88)
+                        .frame(width: heroSize, height: heroSize)
                         .background(Color.accentColor.opacity(0.12), in: .rect(cornerRadius: 22))
                         .accessibilityHidden(true)
                     Text(item.name)
@@ -161,9 +164,15 @@ struct BelongingDetailView: View {
                     LabeledContent("Bitiş", value: ends.formatted(date: .long, time: .omitted))
                     let days = Calendar.current.dateComponents([.day], from: .now, to: ends).day ?? 0
                     LabeledContent("Kalan") {
-                        Text("\(days) gün")
-                            .monospacedDigit()
-                            .foregroundStyle(days <= 31 ? Color("Warning") : .secondary)
+                        if days <= 31 {
+                            Label("\(days) gün · yakında bitiyor", systemImage: "exclamationmark.triangle.fill")
+                                .monospacedDigit()
+                                .foregroundStyle(Color("Warning"))
+                        } else {
+                            Text("\(days) gün")
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -192,7 +201,7 @@ struct BelongingDetailView: View {
                 }
             }
         }
-        .navigationTitle(item.room)
+        .navigationTitle(item.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
