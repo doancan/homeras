@@ -102,9 +102,8 @@ private struct BudgetCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var selectedDay: Date?
 
-    private var dailyAllowance: Decimal {
-        max(0, store.monthlyBudget - store.spentThisMonth) / Decimal(store.remainingDays)
-    }
+    /// Same number as the Bütçe tab: cash after upcoming payments, per day until the next income.
+    private var dailyAllowance: Decimal { store.safeToSpend.perDay }
 
     var body: some View {
         DashboardCard {
@@ -168,8 +167,8 @@ private struct BudgetCard: View {
         let amount = difference.formatted(.currency(code: "TRY").precision(.fractionLength(0)))
         let daily = dailyAllowance.formatted(.currency(code: "TRY").precision(.fractionLength(0)))
         return isUnderPlan
-            ? "Planın \(amount) altındasınız. Ay sonuna kadar günde \(daily) harcayabilirsiniz."
-            : "Planın \(amount) üzerindesiniz. Ay sonuna kadar günde \(daily) kalıyor."
+            ? "Planın \(amount) altındasınız. Sonraki maaşa kadar günde \(daily) güvenle harcanabilir."
+            : "Planın \(amount) üzerindesiniz. Sonraki maaşa kadar günde \(daily) güvenle harcanabilir."
     }
 
     private var amounts: some View {

@@ -9,6 +9,7 @@ struct Member: Identifiable, Hashable {
     let name: String
     let role: String
     let color: Color
+    var isAdult = true
     var initial: String { String(name.prefix(1)) }
 }
 
@@ -47,6 +48,29 @@ struct Belonging: Identifiable, Hashable {
     var maintenance: String?
 }
 
+/// Who can see a record (ADR-0009): the whole household, only the adults, or only its owner.
+enum Visibility: String, CaseIterable, Hashable {
+    case household = "Ortak"
+    case partners = "Eşimle"
+    case personal = "Kişisel"
+
+    var symbol: String {
+        switch self {
+        case .household: "house"
+        case .partners: "person.2"
+        case .personal: "lock"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .household: "Evdeki herkes görür, ortak bütçeye yazılır."
+        case .partners: "Yalnızca yetişkinler görür (ör. çocuklara sürpriz). Ortak bütçeye yazılır."
+        case .personal: "Yalnızca siz görürsünüz; ortak toplamlara hiç girmez."
+        }
+    }
+}
+
 struct Expense: Identifiable, Hashable {
     let id = UUID()
     var title: String
@@ -54,16 +78,69 @@ struct Expense: Identifiable, Hashable {
     var amount: Decimal
     var date: Date
     var paidBy: Member
-    var isPersonal: Bool
+    var visibility: Visibility = .household
+    var isPersonal: Bool { visibility == .personal }
+}
+
+/// A member's salary or other regular income and the day it arrives.
+struct IncomeSource: Identifiable, Hashable {
+    let id = UUID()
+    var member: Member
+    var title: String
+    var amount: Decimal
+    var day: Int
+}
+
+/// "How much can we spend per day until the next income?", with every deduction visible.
+struct SafeToSpend {
+    struct Line: Identifiable {
+        let id = UUID()
+        let title: String
+        let amount: Decimal
+    }
+
+    let cash: Decimal
+    let deductions: [Line]
+    let buffer: Decimal
+    let nextIncome: IncomeSource?
+    let nextIncomeDate: Date
+    let days: Int
+
+    var available: Decimal { max(0, cash - deductions.reduce(0) { $0 + $1.amount } - buffer) }
+    var perDay: Decimal { available / Decimal(max(1, days)) }
+}
+
+enum SplitRule: String, CaseIterable, Hashable {
+    case equal = "Eşit (%50/%50)"
+    case byIncome = "Gelire orantılı"
+}
+
+enum BudgetMethod: String, CaseIterable, Hashable {
+    case payday = "Maaş döngüsü"
+    case monthly = "Takvim ayı"
+    case envelope = "Zarf"
+    case zeroBased = "Sıfır tabanlı"
+
+    var explanation: String {
+        switch self {
+        case .payday: "Dönem maaş gününden maaş gününe sürer. Çoğu aile için önerilir."
+        case .monthly: "Dönem ayın 1'inden sonuna sürer."
+        case .envelope: "Her kategoriye baştan para ayrılır; zarf bitince o kategori durur."
+        case .zeroBased: "Gelirin her lirası bir kategoriye ya da hedefe atanır."
+        }
+    }
 }
 
 struct BudgetCategory: Identifiable, Hashable {
     let id = UUID()
     var name: String
     var symbol: String
+    var color: Color = .accentColor
     var spent: Decimal
     var limit: Decimal
-    var ratio: Double { NSDecimalNumber(decimal: spent / limit).doubleValue }
+    var ratio: Double { limit > 0 ? NSDecimalNumber(decimal: spent / limit).doubleValue : 0 }
+    /// One threshold everywhere: copy, colour and alerts all use 80% (FR-012).
+    var isNearLimit: Bool { ratio >= PrototypeStore.limitWarningRatio }
 }
 
 /// A card purchase split into monthly instalments; only this month's share counts in the budget.
@@ -103,7 +180,9 @@ struct SavingsGoal: Identifiable, Hashable {
     var deadline: Date
     var ratio: Double { NSDecimalNumber(decimal: saved / target).doubleValue }
     var monthlyNeeded: Decimal {
-        let months = max(1, Calendar.current.dateComponents([.month], from: .now, to: deadline).month ?? 1)
+        // Round partial months up so the monthly amount is never understated.
+        let days = Calendar.current.dateComponents([.day], from: .now, to: deadline).day ?? 30
+        let months = max(1, Int((Double(days) / 30.44).rounded(.up)))
         return max(0, target - saved) / Decimal(months)
     }
 }
@@ -141,16 +220,30 @@ final class PrototypeStore {
     var subscriptions: [Subscription] = []
     var statements: [CardStatement] = []
     var goals: [SavingsGoal] = []
-    /// Day of the month the household's salary arrives; the budget period starts here.
-    var payday = 1
+    static let limitWarningRatio = 0.8
+    var incomes: [IncomeSource] = []
+    /// Money in the members' current accounts today (sample; the product derives it from the ledger).
+    var cashOnHand: Decimal = 24_000
+    /// Kept aside so "safe to spend" never reaches zero exactly on payday.
+    var safetyBuffer: Decimal = 1_000
+    var budgetMethod = BudgetMethod.payday
+    var splitRule = SplitRule.equal
+    var quickAmounts: [Decimal] = [120, 250, 500, 1_000]
+    /// Per-member notification choices (FR-071), keyed by member name in the prototype.
+    var notifyOnPartnerExpense = true
+    var notifyOnLimit = true
+    var notifyOnPaymentDue = true
+    var notifyOnChildExpense = false
     let lastMonthSpent: Decimal = 21_340
+    /// Spending in the same days of last month (1st–20th), for an honest comparison.
+    let lastMonthSamePeriodSpent: Decimal = 16_150
     /// Total spending of the last six months, oldest first (sample data).
     let monthlyHistory: [(month: String, amount: Double)] = [
         ("Haz", 19_850), ("Tem", 24_120), ("Ağu", 22_480), ("Eyl", 20_960), ("Eki", 21_340), ("Kas", 18_420),
     ]
 
     let monthlyBudget: Decimal = 25_000
-    let monthlyIncome: Decimal = 52_000
+    var monthlyIncome: Decimal { incomes.reduce(0) { $0 + $1.amount } }
 
     /// Blurs money amounts (Revolut's "hide balances"): useful on a phone the family shares.
     var hidesAmounts = false
@@ -169,6 +262,17 @@ final class PrototypeStore {
             ("İlk ürünü listeye ekle", "Sağ üstteki + ile birkaç saniyede", !shopping.isEmpty),
             ("Aylık bütçeni belirle", "Harcadıkça ayın gidişatını görürsün", false),
         ]
+    }
+
+    /// Recently used merchants for one-tap entry, newest first, without duplicates.
+    var recentMerchants: [(title: String, category: String, amount: Decimal)] {
+        var seen = Set<String>()
+        return expenses.compactMap { expense in
+            guard !seen.contains(expense.title), expense.visibility != .personal else { return nil }
+            seen.insert(expense.title)
+            return (expense.title, expense.category, expense.amount)
+        }
+        .prefix(4).map { $0 }
     }
 
     func addToList(usual name: String) {
@@ -203,7 +307,7 @@ final class PrototypeStore {
     init() {
         let elif = Member(name: "Elif", role: "Sahip", color: .indigo)
         let can = Member(name: "Can", role: "Üye", color: Color(red: 0.70, green: 0.33, blue: 0.10))
-        let deniz = Member(name: "Deniz", role: "Üye", color: Color(red: 0.08, green: 0.45, blue: 0.47))
+        let deniz = Member(name: "Deniz", role: "Çocuk", color: Color(red: 0.08, green: 0.45, blue: 0.47), isAdult: false)
         members = [elif, can, deniz]
 
         let calendar = Calendar.current
@@ -270,28 +374,34 @@ final class PrototypeStore {
         ]
 
         expenses = [
-            Expense(title: "Migros", category: "Market", amount: 842.50, date: days(0), paidBy: elif, isPersonal: false),
-            Expense(title: "Elektrik faturası", category: "Faturalar", amount: 1_240, date: days(-2), paidBy: elif, isPersonal: false),
-            Expense(title: "Akaryakıt", category: "Ulaşım", amount: 2_150, date: days(-3), paidBy: can, isPersonal: false),
-            Expense(title: "Sinema", category: "Eğlence", amount: 480, date: days(-4), paidBy: can, isPersonal: false),
-            Expense(title: "Eczane", category: "Sağlık", amount: 365, date: days(-6), paidBy: elif, isPersonal: false),
-            Expense(title: "Kitap", category: "Kişisel", amount: 320, date: days(-1), paidBy: elif, isPersonal: true),
-            Expense(title: "Spor salonu", category: "Kişisel", amount: 1_100, date: days(-9), paidBy: elif, isPersonal: true),
+            Expense(title: "Migros", category: "Market", amount: 842.50, date: days(0), paidBy: elif, visibility: .household),
+            Expense(title: "Elektrik faturası", category: "Faturalar", amount: 1_240, date: days(-2), paidBy: elif, visibility: .household),
+            Expense(title: "Akaryakıt", category: "Ulaşım", amount: 2_150, date: days(-3), paidBy: can, visibility: .household),
+            Expense(title: "Sinema", category: "Eğlence", amount: 480, date: days(-4), paidBy: can, visibility: .household),
+            Expense(title: "Eczane", category: "Sağlık", amount: 365, date: days(-6), paidBy: elif, visibility: .household),
+            Expense(title: "Kitap", category: "Kişisel", amount: 320, date: days(-1), paidBy: elif, visibility: .personal),
+            Expense(title: "Spor salonu", category: "Kişisel", amount: 1_100, date: days(-9), paidBy: elif, visibility: .personal),
+            Expense(title: "Deniz'e doğum günü hediyesi", category: "Eğlence", amount: 900, date: days(-2), paidBy: can, visibility: .partners),
         ]
 
         categories = [
-            BudgetCategory(name: "Market", symbol: "cart", spent: 6_240, limit: 8_000),
-            BudgetCategory(name: "Faturalar", symbol: "bolt", spent: 3_480, limit: 4_000),
-            BudgetCategory(name: "Ulaşım", symbol: "car", spent: 3_900, limit: 5_000),
-            BudgetCategory(name: "Eğlence", symbol: "popcorn", spent: 2_050, limit: 2_000),
-            BudgetCategory(name: "Sağlık", symbol: "cross.case", spent: 1_210, limit: 2_500),
-            BudgetCategory(name: "Ev", symbol: "sofa", spent: 1_540, limit: 3_500),
+            BudgetCategory(name: "Market", symbol: "cart", color: Color(red: 0.16, green: 0.55, blue: 0.42), spent: 6_240, limit: 8_000),
+            BudgetCategory(name: "Faturalar", symbol: "bolt", color: Color(red: 0.78, green: 0.45, blue: 0.12), spent: 3_480, limit: 4_000),
+            BudgetCategory(name: "Ulaşım", symbol: "car", color: Color(red: 0.16, green: 0.44, blue: 0.74), spent: 3_900, limit: 5_000),
+            BudgetCategory(name: "Eğlence", symbol: "popcorn", color: Color(red: 0.52, green: 0.33, blue: 0.75), spent: 2_050, limit: 2_000),
+            BudgetCategory(name: "Sağlık", symbol: "cross.case", color: Color(red: 0.80, green: 0.25, blue: 0.30), spent: 1_210, limit: 2_500),
+            BudgetCategory(name: "Ev", symbol: "sofa", color: Color(red: 0.50, green: 0.40, blue: 0.30), spent: 1_540, limit: 3_500),
         ]
 
         payments = [
             UpcomingPayment(title: "Doğalgaz", amount: 1_870, due: days(3), symbol: "flame"),
             UpcomingPayment(title: "İnternet", amount: 449, due: days(5), symbol: "wifi"),
             UpcomingPayment(title: "Netflix", amount: 229.99, due: days(9), symbol: "play.tv"),
+        ]
+
+        incomes = [
+            IncomeSource(member: elif, title: "Maaş", amount: 30_000, day: 15),
+            IncomeSource(member: can, title: "Maaş", amount: 22_000, day: 1),
         ]
 
         installments = [
@@ -346,8 +456,9 @@ final class PrototypeStore {
     var installmentsThisMonth: Decimal { installments.reduce(0) { $0 + $1.monthly } }
     var subscriptionsMonthly: Decimal { subscriptions.reduce(0) { $0 + $1.amount } }
     /// Change against last month as a ratio (−0.14 = 14% less).
-    var changeFromLastMonth: Double {
-        NSDecimalNumber(decimal: (spentThisMonth - lastMonthSpent) / lastMonthSpent).doubleValue
+    var changeFromLastMonth: Double? {
+        guard lastMonthSpent > 0 else { return nil }
+        return NSDecimalNumber(decimal: (spentThisMonth - lastMonthSpent) / lastMonthSpent).doubleValue
     }
     /// Out of stock first, then the lowest relative to its minimum.
     var lowStock: [StockItem] {
@@ -359,7 +470,7 @@ final class PrototypeStore {
     var monthName: String { Date.now.formatted(.dateTime.month(.wide)) }
     var upcomingTotal: Decimal { payments.reduce(0) { $0 + $1.amount } }
     var watchedCategories: [BudgetCategory] {
-        categories.filter { $0.ratio >= 0.85 }.sorted { $0.ratio > $1.ratio }
+        categories.filter(\.isNearLimit).sorted { $0.ratio > $1.ratio }
     }
     var expiringWarranties: [Belonging] {
         belongings.filter { ($0.warrantyEnds?.timeIntervalSinceNow ?? .infinity) < 60 * 60 * 24 * 31 }
@@ -438,10 +549,118 @@ final class PrototypeStore {
         ]
     }
     var cartCount: Int { shopping.filter(\.isInCart).count }
-    var remainingDays: Int {
+    /// The most recent income day on or before today: the current payday cycle starts here.
+    var lastIncomeDate: Date {
         let calendar = Calendar.current
-        guard let range = calendar.range(of: .day, in: .month, for: .now) else { return 1 }
-        return max(1, range.count - calendar.component(.day, from: .now) + 1)
+        let today = calendar.startOfDay(for: .now)
+        let previous = incomes.compactMap { income -> Date? in
+            guard let lastMonth = calendar.date(byAdding: .month, value: -1, to: today) else { return nil }
+            let candidate = Self.nextOccurrence(of: income.day, after: calendar.date(byAdding: .day, value: -1, to: lastMonth) ?? lastMonth)
+            let thisCycle = Self.nextOccurrence(of: income.day, after: candidate)
+            return thisCycle <= today ? thisCycle : candidate
+        }
+        return previous.max() ?? today
+    }
+
+    /// Days until the next income of any adult; the payday cycle ends there.
+    var remainingDays: Int { safeToSpend.days }
+
+    /// The next date `day` falls on, clamped to short months and moved back to Friday when it is a
+    /// weekend (Turkish banks pay on the previous working day).
+    static func nextOccurrence(of day: Int, after date: Date = .now) -> Date {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: date)
+        for monthOffset in 0...2 {
+            guard let month = calendar.date(byAdding: .month, value: monthOffset, to: today),
+                let range = calendar.range(of: .day, in: .month, for: month)
+            else { continue }
+            var parts = calendar.dateComponents([.year, .month], from: month)
+            parts.day = min(day, range.count)
+            guard var candidate = calendar.date(from: parts) else { continue }
+            let weekday = calendar.component(.weekday, from: candidate)
+            if weekday == 7 { candidate = calendar.date(byAdding: .day, value: -1, to: candidate) ?? candidate }
+            if weekday == 1 { candidate = calendar.date(byAdding: .day, value: -2, to: candidate) ?? candidate }
+            if candidate > today { return candidate }
+        }
+        return calendar.date(byAdding: .month, value: 1, to: today) ?? today
+    }
+
+    var safeToSpend: SafeToSpend {
+        let calendar = Calendar.current
+        let next = incomes
+            .map { ($0, Self.nextOccurrence(of: $0.day)) }
+            .min { $0.1 < $1.1 }
+        let nextDate = next?.1 ?? Self.nextOccurrence(of: 1)
+        let days = max(1, calendar.dateComponents([.day], from: calendar.startOfDay(for: .now), to: nextDate).day ?? 1)
+
+        var lines: [SafeToSpend.Line] = []
+        for statement in statements where statement.due < nextDate {
+            lines.append(.init(title: "\(statement.bank) ekstresi", amount: statement.amount))
+        }
+        let billsDue = subscriptions.filter { subscription in
+            let due = Self.nextOccurrence(of: subscription.day)
+            return due < nextDate
+        }
+        if !billsDue.isEmpty {
+            lines.append(.init(title: "\(billsDue.count) fatura ve abonelik", amount: billsDue.reduce(0) { $0 + $1.amount }))
+        }
+        let goalShare = goals.reduce(Decimal(0)) { $0 + $1.monthlyNeeded }
+        if goalShare > 0 {
+            lines.append(.init(title: "Birikim hedefleri (bu ay)", amount: goalShare))
+        }
+        return SafeToSpend(
+            cash: isFresh ? 0 : cashOnHand, deductions: isFresh ? [] : lines, buffer: isFresh ? 0 : safetyBuffer,
+            nextIncome: next?.0, nextIncomeDate: nextDate, days: days)
+    }
+
+    /// Against the same days of last month, not the whole month (nil when there is no history).
+    var changeFromSamePeriod: Double? {
+        guard lastMonthSamePeriodSpent > 0 else { return nil }
+        return NSDecimalNumber(decimal: (spentThisMonth - lastMonthSamePeriodSpent) / lastMonthSamePeriodSpent).doubleValue
+    }
+
+    var adults: [Member] { members.filter(\.isAdult) }
+
+    /// Each adult's share of shared spending under the household's split rule.
+    func share(of member: Member) -> Double {
+        let adults = adults
+        guard adults.contains(member) else { return 0 }
+        switch splitRule {
+        case .equal:
+            return 1 / Double(adults.count)
+        case .byIncome:
+            let total = incomes.filter { $0.member.isAdult }.reduce(Decimal(0)) { $0 + $1.amount }
+            let own = incomes.filter { $0.member == member }.reduce(Decimal(0)) { $0 + $1.amount }
+            return total > 0 ? NSDecimalNumber(decimal: own / total).doubleValue : 1 / Double(adults.count)
+        }
+    }
+
+    struct Balance: Identifiable {
+        var id: Member.ID { member.id }
+        let member: Member
+        let paid: Decimal
+        let owes: Decimal
+        var net: Decimal { paid - owes }
+    }
+
+    /// Shared and partners-only spending this period: who paid what, who owes what.
+    var balances: [Balance] {
+        let shared = expenses.filter { $0.visibility != .personal }
+        let total = shared.reduce(Decimal(0)) { $0 + $1.amount }
+        return adults.map { member in
+            let paid = shared.filter { $0.paidBy == member }.reduce(Decimal(0)) { $0 + $1.amount }
+            let owes = total * Decimal(share(of: member))
+            return Balance(member: member, paid: paid, owes: owes)
+        }
+    }
+
+    /// "X, Y'ye ₺Z ödeyecek" for two adults; nil when even (within ₺1).
+    var settlement: (from: Member, to: Member, amount: Decimal)? {
+        let sorted = balances.sorted { $0.net < $1.net }
+        guard let debtor = sorted.first, let creditor = sorted.last, debtor.member != creditor.member else { return nil }
+        let amount = min(-debtor.net, creditor.net)
+        guard amount >= 1 else { return nil }
+        return (debtor.member, creditor.member, amount)
     }
 
     func isOnList(_ item: StockItem) -> Bool {
@@ -488,7 +707,7 @@ final class PrototypeStore {
         shopping.removeAll(where: \.isInCart)
         if total > 0 {
             expenses.insert(
-                Expense(title: "Market alışverişi", category: "Market", amount: total, date: .now, paidBy: me, isPersonal: false),
+                Expense(title: "Market alışverişi", category: "Market", amount: total, date: .now, paidBy: me, visibility: .household),
                 at: 0)
             if let index = categories.firstIndex(where: { $0.name == "Market" }) {
                 categories[index].spent += total
@@ -496,11 +715,14 @@ final class PrototypeStore {
         }
     }
 
-    func addExpense(title: String, amount: Decimal, category: String, isPersonal: Bool) {
+    func addExpense(
+        title: String, amount: Decimal, category: String, visibility: Visibility = .household,
+        paidBy: Member? = nil, date: Date = .now
+    ) {
         expenses.insert(
-            Expense(title: title, category: category, amount: amount, date: .now, paidBy: me, isPersonal: isPersonal),
+            Expense(title: title, category: category, amount: amount, date: date, paidBy: paidBy ?? me, visibility: visibility),
             at: 0)
-        if !isPersonal, let index = categories.firstIndex(where: { $0.name == category }) {
+        if visibility != .personal, let index = categories.firstIndex(where: { $0.name == category }) {
             categories[index].spent += amount
         }
     }
@@ -530,5 +752,12 @@ extension Double {
 }
 
 extension Decimal {
-    var lira: String { formatted(.currency(code: "TRY").precision(.fractionLength(0...2))) }
+    /// ₺1.240 for whole amounts, ₺245,90 otherwise: money never shows a single decimal digit.
+    var lira: String {
+        var rounded = Decimal()
+        var copy = self
+        NSDecimalRound(&rounded, &copy, 0, .plain)
+        let digits = rounded == self ? 0 : 2
+        return formatted(.currency(code: "TRY").precision(.fractionLength(digits)))
+    }
 }
