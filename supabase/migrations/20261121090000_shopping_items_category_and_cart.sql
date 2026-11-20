@@ -27,6 +27,7 @@ begin
     elsif tg_op = 'INSERT' or new.in_cart_at is distinct from old.in_cart_at then
         new.in_cart_by := (select auth.uid());
     else
+        -- Editing other columns keeps who put the item in the cart.
         new.in_cart_by := old.in_cart_by;
     end if;
     return new;

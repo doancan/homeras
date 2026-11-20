@@ -2,11 +2,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(25);
+select plan(33);
 
 insert into auth.users (id, email, aud, role) values
     ('11111111-1111-4111-8111-111111111111', 'alice@example.test', 'authenticated', 'authenticated'),
-    ('22222222-2222-4222-8222-222222222222', 'bora@example.test', 'authenticated', 'authenticated');
+    ('22222222-2222-4222-8222-222222222222', 'bora@example.test', 'authenticated', 'authenticated'),
+    ('33333333-3333-4333-8333-333333333333', 'carol@example.test', 'authenticated', 'authenticated');
 
 create temporary table ctx (household_id uuid) on commit drop;
 grant all on ctx to authenticated, anon;
@@ -19,6 +20,12 @@ select set_config(
     true
 );
 insert into ctx select id from public.create_household('Yılmaz Ailesi');
+
+-- Carol joins Alice's household as a second member (membership is seeded as the owner role).
+reset role;
+insert into public.household_members (household_id, user_id, role)
+select household_id, '33333333-3333-4333-8333-333333333333', 'member' from ctx;
+set local role authenticated;
 
 select lives_ok(
     $$ insert into public.shopping_items (id, household_id, name)
@@ -95,6 +102,58 @@ select lives_ok(
     $$ update public.shopping_items set category = 'bakery', note = 'taze'
        where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' $$,
     'a member edits category and note'
+);
+
+-- Attribution: editing other columns keeps who put the item in the cart; re-carting reassigns it.
+select lives_ok(
+    $$ update public.shopping_items set in_cart_at = now()
+       where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' $$,
+    'the first member puts the item in the cart'
+);
+select lives_ok(
+    $$ update public.shopping_items set note = 'yeni', category = 'pantry'
+       where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' $$,
+    'the first member edits an item that is in the cart'
+);
+select is(
+    (select in_cart_by from public.shopping_items where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+    '11111111-1111-4111-8111-111111111111'::uuid,
+    'editing note and category keeps in_cart_by'
+);
+select set_config(
+    'request.jwt.claims',
+    '{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated"}',
+    true
+);
+select lives_ok(
+    $$ update public.shopping_items set note = 'başka not'
+       where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' $$,
+    'a second member edits the note of an item in the cart'
+);
+select is(
+    (select in_cart_by from public.shopping_items where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+    '11111111-1111-4111-8111-111111111111'::uuid,
+    'the second member editing the note does not take over in_cart_by'
+);
+select lives_ok(
+    $$ update public.shopping_items set in_cart_at = now() + interval '1 second'
+       where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' $$,
+    'the second member re-carts the item'
+);
+select is(
+    (select in_cart_by from public.shopping_items where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+    '33333333-3333-4333-8333-333333333333'::uuid,
+    're-carting assigns in_cart_by to the new member'
+);
+select set_config(
+    'request.jwt.claims',
+    '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}',
+    true
+);
+select lives_ok(
+    $$ update public.shopping_items set in_cart_at = null
+       where id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' $$,
+    'the first member takes the item out of the cart again'
 );
 select throws_ok(
     $$ update public.shopping_items set category = 'snacks'

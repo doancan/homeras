@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(22);
+select plan(25);
 
 insert into auth.users (id, email, aud, role) values
     ('11111111-1111-4111-8111-111111111111', 'alice@example.test', 'authenticated', 'authenticated'),
@@ -103,6 +103,31 @@ select throws_ok(
 select lives_ok(
     $$ delete from public.shopping_items $$,
     'a user outside the household deleting items is a silent no-op'
+);
+select lives_ok(
+    $$ update public.shopping_items set category = 'dairy' $$,
+    'a user outside the household updating items is a silent no-op'
+);
+-- Owner-side check, then back to Bora for the remaining steps.
+select set_config(
+    'request.jwt.claims',
+    '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}',
+    true
+);
+select is(
+    (select count(*)::int from public.shopping_items),
+    1,
+    'the outsider did not delete the household item'
+);
+select is(
+    (select category from public.shopping_items),
+    'other',
+    'the outsider did not change the household item'
+);
+select set_config(
+    'request.jwt.claims',
+    '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated"}',
+    true
 );
 select throws_ok(
     $$ select public.create_household('') $$,
