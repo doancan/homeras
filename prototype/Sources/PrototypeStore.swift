@@ -66,6 +66,48 @@ struct BudgetCategory: Identifiable, Hashable {
     var ratio: Double { NSDecimalNumber(decimal: spent / limit).doubleValue }
 }
 
+/// A card purchase split into monthly instalments; only this month's share counts in the budget.
+struct Installment: Identifiable, Hashable {
+    let id = UUID()
+    var title: String
+    var card: String
+    var category: String
+    var monthly: Decimal
+    var paidCount: Int
+    var totalCount: Int
+    var remaining: Decimal { monthly * Decimal(totalCount - paidCount) }
+}
+
+struct Subscription: Identifiable, Hashable {
+    let id = UUID()
+    var name: String
+    var amount: Decimal
+    var day: Int
+    var symbol: String
+}
+
+struct CardStatement: Identifiable, Hashable {
+    let id = UUID()
+    var bank: String
+    var amount: Decimal
+    var due: Date
+}
+
+/// A shared savings goal; the monthly amount is derived from the target date.
+struct SavingsGoal: Identifiable, Hashable {
+    let id = UUID()
+    var name: String
+    var symbol: String
+    var saved: Decimal
+    var target: Decimal
+    var deadline: Date
+    var ratio: Double { NSDecimalNumber(decimal: saved / target).doubleValue }
+    var monthlyNeeded: Decimal {
+        let months = max(1, Calendar.current.dateComponents([.month], from: .now, to: deadline).month ?? 1)
+        return max(0, target - saved) / Decimal(months)
+    }
+}
+
 struct UpcomingPayment: Identifiable, Hashable {
     let id = UUID()
     var title: String
@@ -95,6 +137,17 @@ final class PrototypeStore {
     var categories: [BudgetCategory]
     var payments: [UpcomingPayment]
     var reminders: [Reminder]
+    var installments: [Installment] = []
+    var subscriptions: [Subscription] = []
+    var statements: [CardStatement] = []
+    var goals: [SavingsGoal] = []
+    /// Day of the month the household's salary arrives; the budget period starts here.
+    var payday = 1
+    let lastMonthSpent: Decimal = 21_340
+    /// Total spending of the last six months, oldest first (sample data).
+    let monthlyHistory: [(month: String, amount: Double)] = [
+        ("Haz", 19_850), ("Tem", 24_120), ("Ağu", 22_480), ("Eyl", 20_960), ("Eki", 21_340), ("Kas", 18_420),
+    ]
 
     let monthlyBudget: Decimal = 25_000
     let monthlyIncome: Decimal = 52_000
@@ -134,6 +187,10 @@ final class PrototypeStore {
     /// Empties the sample household to show the first-run experience.
     func resetToFreshHousehold() {
         hasInvitedFamily = false
+        installments = []
+        subscriptions = []
+        statements = []
+        goals = []
         shopping = []
         stock = []
         belongings = []
@@ -237,6 +294,46 @@ final class PrototypeStore {
             UpcomingPayment(title: "Netflix", amount: 229.99, due: days(9), symbol: "play.tv"),
         ]
 
+        installments = [
+            Installment(title: "Buzdolabı", card: "Yapı Kredi", category: "Ev", monthly: 2_000, paidCount: 1, totalCount: 6),
+            Installment(title: "Telefon", card: "Garanti BBVA", category: "Elektronik", monthly: 1_250, paidCount: 4, totalCount: 12),
+        ]
+        subscriptions = [
+            Subscription(name: "İnternet", amount: 449, day: 25, symbol: "wifi"),
+            Subscription(name: "Netflix", amount: 229.99, day: 29, symbol: "play.tv"),
+            Subscription(name: "Spotify Aile", amount: 149.99, day: 3, symbol: "music.note"),
+            Subscription(name: "iCloud+", amount: 79.99, day: 12, symbol: "icloud"),
+            Subscription(name: "Elektrik (ort.)", amount: 1_240, day: 18, symbol: "bolt"),
+        ]
+        statements = [
+            CardStatement(bank: "Yapı Kredi", amount: 8_454, due: days(5)),
+            CardStatement(bank: "Garanti BBVA", amount: 3_120, due: days(12)),
+        ]
+        goals = [
+            SavingsGoal(name: "Aile tatili", symbol: "beach.umbrella", saved: 5_000, target: 20_000, deadline: months(12)),
+            SavingsGoal(name: "Acil durum fonu", symbol: "lifepreserver", saved: 18_000, target: 30_000, deadline: months(8)),
+        ]
+
+        installments = [
+            Installment(title: "Buzdolabı", card: "Yapı Kredi", category: "Ev", monthly: 2_000, paidCount: 1, totalCount: 6),
+            Installment(title: "Telefon", card: "Garanti BBVA", category: "Elektronik", monthly: 1_250, paidCount: 4, totalCount: 12),
+        ]
+        subscriptions = [
+            Subscription(name: "İnternet", amount: 449, day: 25, symbol: "wifi"),
+            Subscription(name: "Netflix", amount: 229.99, day: 29, symbol: "play.tv"),
+            Subscription(name: "Spotify Aile", amount: 149.99, day: 3, symbol: "music.note"),
+            Subscription(name: "iCloud+", amount: 79.99, day: 12, symbol: "icloud"),
+            Subscription(name: "Elektrik (ort.)", amount: 1_240, day: 18, symbol: "bolt"),
+        ]
+        statements = [
+            CardStatement(bank: "Yapı Kredi", amount: 8_454, due: days(5)),
+            CardStatement(bank: "Garanti BBVA", amount: 3_120, due: days(12)),
+        ]
+        goals = [
+            SavingsGoal(name: "Aile tatili", symbol: "beach.umbrella", saved: 5_000, target: 20_000, deadline: months(12)),
+            SavingsGoal(name: "Acil durum fonu", symbol: "lifepreserver", saved: 18_000, target: 30_000, deadline: months(8)),
+        ]
+
         reminders = [
             Reminder(title: "Klima filtresi", detail: "Değişim zamanı", due: days(2), symbol: "air.conditioner.horizontal"),
             Reminder(title: "Bulaşık makinesi garantisi", detail: "Garanti bitiyor", due: days(28), symbol: "checkmark.shield"),
@@ -246,6 +343,12 @@ final class PrototypeStore {
     // MARK: Derived
 
     var spentThisMonth: Decimal { categories.reduce(0) { $0 + $1.spent } }
+    var installmentsThisMonth: Decimal { installments.reduce(0) { $0 + $1.monthly } }
+    var subscriptionsMonthly: Decimal { subscriptions.reduce(0) { $0 + $1.amount } }
+    /// Change against last month as a ratio (−0.14 = 14% less).
+    var changeFromLastMonth: Double {
+        NSDecimalNumber(decimal: (spentThisMonth - lastMonthSpent) / lastMonthSpent).doubleValue
+    }
     /// Out of stock first, then the lowest relative to its minimum.
     var lowStock: [StockItem] {
         stock.filter(\.isLow).sorted { lhs, rhs in

@@ -11,6 +11,8 @@ struct BudgetView: View {
     @Environment(PrototypeStore.self) private var store
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var scope = Demo.value("demo") == "personal" ? Scope.personal : Scope.shared
+    /// Prototype walkthrough only: `-page installments|subscriptions|statements|stats`.
+    @State private var demoPage = Demo.value("page")
 
     private var expenses: [Expense] {
         store.expenses.filter { $0.isPersonal == (scope == .personal) }
@@ -18,6 +20,7 @@ struct BudgetView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             List {
                 Section {
                     Picker("Kapsam", selection: $scope) {
@@ -31,14 +34,55 @@ struct BudgetView: View {
                 switch scope {
                 case .shared:
                     Section {
+                        PaydayHero()
+                    }
+                    Section {
                         summary
                             .moneyPrivacy(store.hidesAmounts)
                     } footer: {
-                        Text("Bu ay ortak gelir: \(store.monthlyIncome.lira)")
+                        Text(changeText)
                     }
-                    Section("Son 14 gün") { spendingChart }
-                    Section("Kategoriler") {
+                    Section {
                         ForEach(store.categories) { CategoryRow(category: $0) }
+                    } header: {
+                        Text("Kategori limitleri")
+                    } footer: {
+                        Text("Bir kategori limitinin %80'ine gelince ve aşınca evdeki herkese bildirim gider.")
+                    }
+                    Section("Ödemeler") {
+                        EmptyView().id("payments")
+                        if let next = store.statements.min(by: { $0.due < $1.due }) {
+                            NavigationLink { StatementsView() } label: {
+                                FinanceRow(
+                                    symbol: "creditcard", title: "Kart ekstreleri",
+                                    detail: "\(next.bank) son ödeme \(next.due.formatted(.relative(presentation: .named)))",
+                                    amount: next.amount)
+                            }
+                        }
+                        NavigationLink { InstallmentsView() } label: {
+                            FinanceRow(
+                                symbol: "square.stack.3d.up", title: "Taksitler",
+                                detail: "\(store.installments.count) aktif · bu ay ödenecek",
+                                amount: store.installmentsThisMonth)
+                        }
+                        NavigationLink { SubscriptionsView() } label: {
+                            FinanceRow(
+                                symbol: "arrow.triangle.2.circlepath", title: "Abonelikler",
+                                detail: "\(store.subscriptions.count) düzenli ödeme, faturalar dahil",
+                                amount: store.subscriptionsMonthly)
+                        }
+                    }
+                    Section {
+                        ForEach(store.goals) { GoalRow(goal: $0) }
+                    } header: {
+                        Text("Birikim hedefleri")
+                    } footer: {
+                        Text("Hedefe zamanında ulaşmak için her ay ayrılması gereken tutar hesaplanır.")
+                    }
+                    Section {
+                        NavigationLink { StatisticsView() } label: {
+                            Label("İstatistikler", systemImage: "chart.bar.xaxis")
+                        }
                     }
                 case .personal:
                     Section {
@@ -64,6 +108,18 @@ struct BudgetView: View {
                 }
             }
             .listSectionSpacing(.compact)
+            .onAppear {
+                if Demo.value("scroll") == "payments" { proxy.scrollTo("payments", anchor: .top) }
+            }
+            }
+            .navigationDestination(item: $demoPage) { page in
+                switch page {
+                case "installments": InstallmentsView()
+                case "subscriptions": SubscriptionsView()
+                case "statements": StatementsView()
+                default: StatisticsView()
+                }
+            }
             .navigationTitle("Bütçe")
             .navigationSubtitle(Date.now.formatted(.dateTime.month(.wide).year()))
             .toolbar {
@@ -78,6 +134,13 @@ struct BudgetView: View {
                 QuickAddToolbarItem(store: store)
             }
         }
+    }
+
+    private var changeText: String {
+        let change = store.changeFromLastMonth
+        let percent = abs(change).formatted(.percent.precision(.fractionLength(0)))
+        let direction = change <= 0 ? "az" : "fazla"
+        return "Geçen ayın aynı dönemine göre %\(percent.replacingOccurrences(of: "%", with: "")) \(direction) harcandı. Ortak gelir: \(store.monthlyIncome.lira)."
     }
 
     /// Budget, spent and what is left of the budget: three numbers that add up.
@@ -117,38 +180,6 @@ struct BudgetView: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-    }
-
-    private var spendingChart: some View {
-        let daily: [(Date, Double)] = (0..<14).map { offset in
-            let day = Calendar.current.date(byAdding: .day, value: -13 + offset, to: .now) ?? .now
-            let value = [420, 180, 0, 950, 310, 2150, 120, 0, 640, 480, 1240, 365, 320, 842][offset]
-            return (day, Double(value))
-        }
-        return Chart(daily, id: \.0) { day, amount in
-            BarMark(x: .value("Gün", day, unit: .day), y: .value("Tutar", amount))
-                .foregroundStyle(Color.accentColor.gradient)
-                .cornerRadius(3)
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading) { value in
-                AxisGridLine()
-AxisValueLabel {
-                    if let amount = value.as(Double.self) {
-                        Text(amount.thousandsLabel)
-                    }
-                }
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: typeSize.isAccessibilitySize ? 7 : 4)) {
-                AxisValueLabel(format: .dateTime.day().month(.abbreviated))
-            }
-        }
-        .frame(height: 160)
-        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-        .padding(.vertical, 6)
-        .accessibilityLabel("Son 14 günün günlük harcama grafiği")
     }
 }
 

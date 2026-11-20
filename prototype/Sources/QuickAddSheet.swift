@@ -15,6 +15,9 @@ struct QuickAddSheet: View {
     @State private var amount: Decimal?
     @State private var category = "Market"
     @State private var isPersonal = false
+    @State private var merchant = ""
+    @State private var installmentCount = 1
+    @State private var parsedFromMessage = false
     @FocusState private var isFocused: Bool
 
     private let expenseCategories = ["Market", "Faturalar", "Ulaşım", "Eğlence", "Sağlık", "Ev"]
@@ -50,6 +53,22 @@ struct QuickAddSheet: View {
                     }
                 case .expense:
                     Section {
+                        PasteButton(payloadType: String.self) { strings in
+                            guard let message = strings.first else { return }
+                            Task { @MainActor in apply(message) }
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .buttonBorderShape(.capsule)
+                        .frame(maxWidth: .infinity)
+                        .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Banka mesajından")
+                    } footer: {
+                        Text(parsedFromMessage
+                            ? "Banka mesajı telefonunuzda okundu, hiçbir yere gönderilmedi. Bilgileri kontrol edip ekleyin."
+                            : "Bankadan gelen harcama mesajını kopyalayıp yapıştırın: tutar, işyeri ve kategori kendiliğinden dolar.")
+                    }
+                    Section {
                         TextField("₺0", value: $amount, format: .currency(code: "TRY"))
                             .keyboardType(.decimalPad)
                             .font(.largeTitle.weight(.semibold))
@@ -69,14 +88,19 @@ struct QuickAddSheet: View {
                         }
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                        TextField("İşyeri (isteğe bağlı)", text: $merchant)
                         Picker("Kategori", selection: $category) {
                             ForEach(expenseCategories, id: \.self) { Text($0) }
+                        }
+                        Picker("Taksit", selection: $installmentCount) {
+                            Text("Tek çekim").tag(1)
+                            ForEach([2, 3, 6, 9, 12], id: \.self) { Text("\($0) taksit").tag($0) }
                         }
                         Toggle(isOn: $isPersonal) {
                             Label("Kişisel", systemImage: "lock")
                         }
                     } footer: {
-                        Text(isPersonal ? "Yalnızca siz görürsünüz." : "Ortak bütçeye yazılır.")
+                        Text(expenseFooter)
                     }
                 case .stock:
                     Section("Hızlıca düş") {
@@ -109,8 +133,28 @@ struct QuickAddSheet: View {
                     }
                 }
             }
-            .onAppear { isFocused = true }
+            .onAppear {
+                isFocused = true
+                if Demo.value("sms") == "1" { apply(BankMessageParser.sample) }
+            }
             .onChange(of: kind) { isFocused = kind != .stock }
+        }
+    }
+
+    private var expenseFooter: String {
+        let scope = isPersonal ? "Yalnızca siz görürsünüz." : "Ortak bütçeye yazılır."
+        guard installmentCount > 1, let amount, amount > 0 else { return scope }
+        let monthly = (amount / Decimal(installmentCount)).formatted(.currency(code: "TRY").precision(.fractionLength(0...2)))
+        return "\(scope) Bu ay bütçeye yalnızca ilk taksit (\(monthly)) yazılır; kalanı her ay düşer."
+    }
+
+    private func apply(_ message: String) {
+        guard let result = BankMessageParser.parse(message) else { return }
+        withAnimation {
+            amount = result.amount
+            merchant = result.merchant ?? ""
+            if let guessed = result.category, expenseCategories.contains(guessed) { category = guessed }
+            parsedFromMessage = true
         }
     }
 
@@ -118,7 +162,15 @@ struct QuickAddSheet: View {
         switch kind {
         case .shopping: store.addToList(name: name)
         case .expense:
-            store.addExpense(title: category, amount: amount ?? 0, category: category, isPersonal: isPersonal)
+            let total = amount ?? 0
+            let title = merchant.isEmpty ? category : merchant
+            if installmentCount > 1 {
+                store.installments.append(
+                    Installment(title: title, card: "Kart", category: category, monthly: total / Decimal(installmentCount), paidCount: 1, totalCount: installmentCount))
+                store.addExpense(title: title, amount: total / Decimal(installmentCount), category: category, isPersonal: isPersonal)
+            } else {
+                store.addExpense(title: title, amount: total, category: category, isPersonal: isPersonal)
+            }
         case .stock: break
         }
         dismiss()
