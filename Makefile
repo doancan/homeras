@@ -41,8 +41,12 @@ format: ## Rewrite Swift sources in the project style
 format-check: ## Fail on Swift style violations
 	swift format lint --strict --recursive --parallel $(SWIFT_SOURCES)
 
-test-packages: ## Unit tests of all Swift modules (warnings are errors)
-	swift test --package-path $(PKG) --skip SupabaseBackendIntegrationTests
+# Through xcodebuild, not `swift test`: the command-line SwiftPM of Xcode 26 does not compile
+# String Catalogs into module bundles, so localized text would only be checked on some toolchains.
+test-packages: ## Unit tests of all Swift modules (warnings are errors), built like the app
+	set -o pipefail; cd $(PKG) && xcodebuild test -scheme AppModules-Package -destination 'platform=macOS' \
+		-skip-testing:SupabaseBackendIntegrationTests -onlyUsePackageVersionsFromResolvedFile \
+		| grep -E '(✔ Test run|✘|error:|\*\* TEST)'
 
 test-app: ## Build the iOS app and run its tests on the simulator
 	set -o pipefail; xcodebuild test -project $(PROJECT) -scheme $(SCHEME) -destination '$(DEST)' \

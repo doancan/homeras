@@ -108,11 +108,11 @@ project.yml, Makefile  # Xcode projesi kaynağı; tek doğrulama giriş noktası
 
 ## Son kararlar
 
+- [0008 — Paket testleri `xcodebuild` ile](decisions/0008-run-package-tests-through-xcodebuild.md)
 - [0007 — iOS 27 SDK ve HIG, iOS 26 tabanı](decisions/0007-ios-27-sdk-and-hig-with-ios-26-floor.md)
 - [0006 — E-posta OTP + Sign in with Apple](decisions/0006-auth-email-otp-and-sign-in-with-apple.md)
 - [0005 — Offline-first: GRDB + outbox, stokta delta](decisions/0005-offline-first-sync-with-outbox.md)
 - [0004 — Ev tenant'tır; RLS ile yetki](decisions/0004-household-tenancy-and-row-level-security.md)
-- [0003 — AB bölgesinde Supabase](decisions/0003-supabase-backend-in-eu.md)
 
 ## Çalışma kuralı
 
