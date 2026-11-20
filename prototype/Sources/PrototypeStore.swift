@@ -101,6 +101,8 @@ final class PrototypeStore {
 
     /// Blurs money amounts (Revolut's "hide balances"): useful on a phone the family shares.
     var hidesAmounts = false
+    /// False until someone else has joined; the sample household starts with three members.
+    var hasInvitedFamily = true
     /// Things this household buys again and again (Target's "My Usuals").
     var usuals = ["Ekmek", "Süt", "Yumurta", "Muz", "Kahve"]
     var recentSearches = ["Garanti", "AA pil", "Fatura"]
@@ -108,7 +110,7 @@ final class PrototypeStore {
     var isFresh: Bool { shopping.isEmpty && stock.isEmpty && expenses.isEmpty }
     var setupSteps: [(title: String, detail: String, isDone: Bool)] {
         [
-            ("Aileni davet et", "Liste ve bütçe herkesle paylaşılır", members.count > 1),
+            ("Aileni davet et", "Liste ve bütçe herkesle paylaşılır", hasInvitedFamily),
             ("İlk ürünü listeye ekle", "“Hızlı ekle” ile birkaç saniyede", !shopping.isEmpty),
             ("Aylık bütçeni belirle", "Harcadıkça ayın gidişatını görürsün", false),
         ]
@@ -129,6 +131,7 @@ final class PrototypeStore {
 
     /// Empties the sample household to show the first-run experience.
     func resetToFreshHousehold() {
+        hasInvitedFamily = false
         shopping = []
         stock = []
         belongings = []

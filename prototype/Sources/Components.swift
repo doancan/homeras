@@ -16,7 +16,8 @@ extension View {
 extension View {
     /// Blurs a money amount while the household hides amounts; VoiceOver hears "gizli".
     func moneyPrivacy(_ isHidden: Bool) -> some View {
-        redacted(reason: isHidden ? .privacy : [])
+        // `.privacy` only redacts on the lock screen and in widgets; placeholder hides in-app.
+        redacted(reason: isHidden ? .placeholder : [])
             .accessibilityValue(isHidden ? Text("gizli") : Text(""))
     }
 }

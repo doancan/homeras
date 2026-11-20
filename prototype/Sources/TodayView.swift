@@ -81,13 +81,8 @@ struct TodayView: View {
                     Button {
                         isFamilyPresented = true
                     } label: {
-                        // Title + icon so the item still reads when bars move to the side on iPhone Duo.
-                        Label {
-                            Text("Aile")
-                        } icon: {
-                            FamilyAvatars(members: store.members)
-                        }
-                        .labelStyle(.iconOnly)
+                        // Title + symbol so the item still reads when bars move to the side on iPhone Duo.
+                        Label("Aile", systemImage: "person.2")
                     }
                     .accessibilityLabel("Aile ve ayarlar")
                 }
@@ -150,6 +145,7 @@ private struct BudgetCard: View {
 
                 Label {
                     Text(paceSummary)
+                        .moneyPrivacy(store.hidesAmounts)
                 } icon: {
                     Image(systemName: isUnderPlan ? "checkmark.circle" : "exclamationmark.circle")
                         .foregroundStyle(isUnderPlan ? Color.accentColor : Color("Warning"))
@@ -324,8 +320,7 @@ private struct GhostChart: View {
             ForEach([0.25, 0.4, 0.3, 0.55, 0.45, 0.7, 0.5, 0.65, 0.35, 0.6], id: \.self) { height in
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.secondary.opacity(0.14))
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .containerRelativeFrame(.vertical) { length, _ in length * height }
+                    .frame(height: 110 * height)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
