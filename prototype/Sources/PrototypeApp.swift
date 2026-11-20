@@ -2,7 +2,12 @@ import SwiftUI
 
 @main
 struct PrototypeApp: App {
-    @State private var store = PrototypeStore()
+    @State private var store: PrototypeStore = {
+        let store = PrototypeStore()
+        if Demo.value("demo") == "empty" { store.resetToFreshHousehold() }
+        if Demo.value("hide") == "1" { store.hidesAmounts = true }
+        return store
+    }()
 
     var body: some Scene {
         WindowGroup {

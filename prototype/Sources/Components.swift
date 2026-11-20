@@ -13,6 +13,14 @@ extension View {
     }
 }
 
+extension View {
+    /// Blurs a money amount while the household hides amounts; VoiceOver hears "gizli".
+    func moneyPrivacy(_ isHidden: Bool) -> some View {
+        redacted(reason: isHidden ? .privacy : [])
+            .accessibilityValue(isHidden ? Text("gizli") : Text(""))
+    }
+}
+
 /// A tinted SF Symbol tile used at the start of rows (content layer, no glass).
 struct IconBadge: View {
     let symbol: String

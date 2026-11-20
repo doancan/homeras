@@ -33,6 +33,14 @@ struct FamilySheet: View {
                     Text("Ortak liste, stok ve ortak harcamalar tüm üyelerle paylaşılır. Kişisel harcamalar paylaşılmaz.")
                 }
 
+                Section {
+                    Toggle(isOn: Bindable(store).hidesAmounts) {
+                        Label("Tutarları gizle", systemImage: "eye.slash")
+                    }
+                } footer: {
+                    Text("Bütçe ve harcama tutarları bulanıklaşır. Telefon aile içinde ortak kullanılıyorsa ya da başkalarının yanındaysanız işe yarar.")
+                }
+
                 Section("Uygulama") {
                     NavigationLink { Text("Bildirim ayarları") } label: {
                         Label("Bildirimler", systemImage: "bell.badge")

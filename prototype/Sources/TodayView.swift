@@ -25,6 +25,9 @@ struct TodayView: View {
             ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 16) {
+                    if store.isFresh {
+                        SetupCard()
+                    }
                     BudgetCard()
                         .onTapGesture { selection = .budget }
 
@@ -42,6 +45,7 @@ struct TodayView: View {
                             detail: stockDetail
                         ) { selection = .home }
                         StatTile(
+                            isMoney: true,
                             symbol: "calendar.badge.clock", tint: .accentColor,
                             value: store.upcomingTotal.formatted(.currency(code: "TRY").precision(.fractionLength(0))),
                             title: "Yaklaşan ödemeler",
@@ -109,20 +113,40 @@ private struct BudgetCard: View {
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center, spacing: 8) {
                     Text("\(store.monthName.capitalized(with: Locale(identifier: "tr_TR"))) bütçesi")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
+                    if !store.isFresh { StatusPill(isOnTrack: isUnderPlan) }
                     Spacer()
-                    Text("\(store.remainingDays) gün kaldı")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    Button {
+                        withAnimation { store.hidesAmounts.toggle() }
+                    } label: {
+                        Label(
+                            store.hidesAmounts ? "Tutarları göster" : "Tutarları gizle",
+                            systemImage: store.hidesAmounts ? "eye.slash" : "eye")
+                            .labelStyle(.iconOnly)
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 amounts
+                    .moneyPrivacy(store.hidesAmounts)
 
-                SpendingPaceChart(selectedDay: $selectedDay)
-                    .frame(height: typeSize.isAccessibilitySize ? 200 : 140)
+                Text("\(store.remainingDays) gün kaldı")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                if store.isFresh {
+                    GhostChart()
+                        .frame(height: 120)
+                } else {
+                    SpendingPaceChart(selectedDay: $selectedDay)
+                        .frame(height: typeSize.isAccessibilitySize ? 200 : 140)
+                        .moneyPrivacy(store.hidesAmounts)
+                }
 
                 Label {
                     Text(paceSummary)
@@ -140,6 +164,9 @@ private struct BudgetCard: View {
     private var isUnderPlan: Bool { store.spentThisMonth <= store.plannedByToday }
 
     private var paceSummary: String {
+        if store.isFresh {
+            return "Harcama girdikçe ayın gidişatı ve günlük harcama payınız burada görünür."
+        }
         let difference = abs(NSDecimalNumber(decimal: store.plannedByToday - store.spentThisMonth).doubleValue)
         let amount = difference.formatted(.currency(code: "TRY").precision(.fractionLength(0)))
         let daily = dailyAllowance.formatted(.currency(code: "TRY").precision(.fractionLength(0)))
@@ -275,6 +302,80 @@ private struct LegendKey: View {
     }
 }
 
+/// "Yolunda" / "Plan üstünde": state in words and an icon, never colour alone.
+private struct StatusPill: View {
+    let isOnTrack: Bool
+
+    var body: some View {
+        Label(isOnTrack ? "Yolunda" : "Plan üstünde", systemImage: isOnTrack ? "checkmark.circle.fill" : "arrow.up.right.circle.fill")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isOnTrack ? Color.accentColor : Color("Warning"))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background((isOnTrack ? Color.accentColor : Color("Warning")).opacity(0.14), in: .capsule)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+    }
+}
+
+/// Placeholder bars for a month with no spending yet (Klarna's empty budget pattern).
+private struct GhostChart: View {
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            ForEach([0.25, 0.4, 0.3, 0.55, 0.45, 0.7, 0.5, 0.65, 0.35, 0.6], id: \.self) { height in
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.secondary.opacity(0.14))
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .containerRelativeFrame(.vertical) { length, _ in length * height }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .accessibilityHidden(true)
+    }
+}
+
+/// First-run checklist: the three things that make the app useful, each one tap away.
+private struct SetupCard: View {
+    @Environment(PrototypeStore.self) private var store
+
+    var body: some View {
+        let steps = store.setupSteps
+        let done = steps.filter(\.isDone).count
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Evinizi kurun")
+                        .font(.title3.weight(.semibold))
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Text("\(done)/\(steps.count)")
+                        .font(.subheadline.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                ProgressView(value: Double(done), total: Double(steps.count))
+                ForEach(steps, id: \.title) { step in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: step.isDone ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(step.isDone ? Color.accentColor : Color.secondary)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(step.title)
+                                .strikethrough(step.isDone)
+                                .foregroundStyle(step.isDone ? .secondary : .primary)
+                            Text(step.detail)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityValue(step.isDone ? "Tamamlandı" : "Yapılacak")
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Tiles and cards
 
 /// A surface for one dashboard block. Solid grouped background: cards are content, not glass.
@@ -290,6 +391,8 @@ struct DashboardCard<Content: View>: View {
 }
 
 private struct StatTile: View {
+    @Environment(PrototypeStore.self) private var store
+    var isMoney = false
     let symbol: String
     let tint: Color
     let value: String
@@ -312,6 +415,7 @@ private struct StatTile: View {
                         .accessibilityHidden(true)
                 }
                 Text(value)
+                    .moneyPrivacy(isMoney && store.hidesAmounts)
                     .font(.title.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(.primary)

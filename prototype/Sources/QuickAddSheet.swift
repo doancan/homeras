@@ -10,7 +10,7 @@ struct QuickAddSheet: View {
 
     @Environment(PrototypeStore.self) private var store
     @Environment(\.dismiss) private var dismiss
-    @State private var kind = Kind.shopping
+    @State private var kind = Demo.value("kind") == "expense" ? Kind.expense : Kind.shopping
     @State private var name = ""
     @State private var amount: Decimal?
     @State private var category = "Market"
@@ -50,11 +50,25 @@ struct QuickAddSheet: View {
                     }
                 case .expense:
                     Section {
-                        TextField("Tutar", value: $amount, format: .currency(code: "TRY"))
+                        TextField("₺0", value: $amount, format: .currency(code: "TRY"))
                             .keyboardType(.decimalPad)
-                            .font(.title2.weight(.semibold))
+                            .font(.largeTitle.weight(.semibold))
                             .monospacedDigit()
+                            .multilineTextAlignment(.center)
                             .focused($isFocused)
+                            .accessibilityLabel("Tutar")
+                        // Common amounts, one tap (Revolut's quick amounts).
+                        HStack(spacing: 8) {
+                            ForEach([50, 100, 250, 500], id: \.self) { preset in
+                                Button("₺\(preset)") { amount = Decimal(preset) }
+                                    .buttonStyle(.bordered)
+                                    .buttonBorderShape(.capsule)
+                                    .frame(maxWidth: .infinity)
+                                    .accessibilityLabel("\(preset) lira")
+                            }
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                         Picker("Kategori", selection: $category) {
                             ForEach(expenseCategories, id: \.self) { Text($0) }
                         }

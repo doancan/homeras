@@ -10,6 +10,26 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             List {
+                if query.isEmpty && !store.recentSearches.isEmpty {
+                    Section {
+                        ForEach(store.recentSearches, id: \.self) { recent in
+                            Button {
+                                query = recent
+                            } label: {
+                                Label(recent, systemImage: "clock.arrow.circlepath")
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                    } header: {
+                        HStack {
+                            Text("Son aramalar")
+                            Spacer()
+                            Button("Temizle") { withAnimation { store.recentSearches.removeAll() } }
+                                .font(.subheadline)
+                                .textCase(nil)
+                        }
+                    }
+                }
                 if query.isEmpty {
                     Section("Önerilen") {
                         ForEach(["HDMI kablo", "Garanti", "Pil", "Fatura"], id: \.self) { suggestion in
@@ -27,6 +47,7 @@ struct SearchView: View {
             }
             .navigationTitle("Ara")
             .searchable(text: $query, prompt: "Eşya, stok, harcama…")
+            .onSubmit(of: .search) { store.remember(search: query) }
             .navigationDestination(for: Belonging.self) { BelongingDetailView(item: $0) }
         }
     }

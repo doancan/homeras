@@ -32,6 +32,7 @@ struct BudgetView: View {
                 case .shared:
                     Section {
                         summary
+                            .moneyPrivacy(store.hidesAmounts)
                     } footer: {
                         Text("Bu ay ortak gelir: \(store.monthlyIncome.lira)")
                     }

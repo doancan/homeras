@@ -99,6 +99,45 @@ final class PrototypeStore {
     let monthlyBudget: Decimal = 25_000
     let monthlyIncome: Decimal = 52_000
 
+    /// Blurs money amounts (Revolut's "hide balances"): useful on a phone the family shares.
+    var hidesAmounts = false
+    /// Things this household buys again and again (Target's "My Usuals").
+    var usuals = ["Ekmek", "Süt", "Yumurta", "Muz", "Kahve"]
+    var recentSearches = ["Garanti", "AA pil", "Fatura"]
+    /// A household that has just been created: no list, stock or spending yet.
+    var isFresh: Bool { shopping.isEmpty && stock.isEmpty && expenses.isEmpty }
+    var setupSteps: [(title: String, detail: String, isDone: Bool)] {
+        [
+            ("Aileni davet et", "Liste ve bütçe herkesle paylaşılır", members.count > 1),
+            ("İlk ürünü listeye ekle", "“Hızlı ekle” ile birkaç saniyede", !shopping.isEmpty),
+            ("Aylık bütçeni belirle", "Harcadıkça ayın gidişatını görürsün", false),
+        ]
+    }
+
+    func addToList(usual name: String) {
+        guard !shopping.contains(where: { $0.name == name && !$0.isInCart }) else { return }
+        shopping.append(ShoppingEntry(name: name, quantity: "", category: "Diğer", addedBy: me))
+    }
+
+    func remember(search query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        recentSearches.removeAll { $0.searchKey == trimmed.searchKey }
+        recentSearches.insert(trimmed, at: 0)
+        recentSearches = Array(recentSearches.prefix(5))
+    }
+
+    /// Empties the sample household to show the first-run experience.
+    func resetToFreshHousehold() {
+        shopping = []
+        stock = []
+        belongings = []
+        expenses = []
+        payments = []
+        reminders = []
+        categories = categories.map { BudgetCategory(name: $0.name, symbol: $0.symbol, spent: 0, limit: $0.limit) }
+    }
+
     init() {
         let elif = Member(name: "Elif", role: "Sahip", color: .indigo)
         let can = Member(name: "Can", role: "Üye", color: Color(red: 0.70, green: 0.33, blue: 0.10))
@@ -226,6 +265,7 @@ final class PrototypeStore {
 
     /// Cumulative spending from the 1st of the month to today (sample data).
     var cumulativeSpending: [SpendPoint] {
+        guard !isFresh else { return [] }
         let calendar = Calendar.current
         let today = calendar.component(.day, from: .now)
         let start = calendar.date(from: calendar.dateComponents([.year, .month], from: .now)) ?? .now
@@ -282,7 +322,8 @@ final class PrototypeStore {
     }
 
     var activity: [Activity] {
-        [
+        guard !isFresh else { return [] }
+        return [
             Activity(member: members[1], text: "listeye Süt ve Domates ekledi", date: .now.addingTimeInterval(-60 * 25)),
             Activity(member: members[0], text: "Migros alışverişini kaydetti · ₺842,50", date: .now.addingTimeInterval(-60 * 60 * 3)),
             Activity(member: members[2], text: "Muz ekledi", date: .now.addingTimeInterval(-60 * 60 * 20)),

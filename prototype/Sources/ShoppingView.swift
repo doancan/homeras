@@ -25,6 +25,31 @@ struct ShoppingView: View {
     var body: some View {
         NavigationStack {
             List {
+                let usuals = store.usuals.filter { name in !store.shopping.contains { $0.name == name && !$0.isInCart } }
+                if !usuals.isEmpty {
+                    Section {
+                        ScrollView(.horizontal) {
+                            HStack(spacing: 8) {
+                                ForEach(usuals, id: \.self) { name in
+                                    Button {
+                                        withAnimation { store.addToList(usual: name) }
+                                    } label: {
+                                        Label(name, systemImage: "arrow.counterclockwise")
+                                            .font(.subheadline)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .buttonBorderShape(.capsule)
+                                    .accessibilityLabel("\(name) tekrar ekle")
+                                }
+                            }
+                        }
+                        .scrollIndicators(.hidden)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    } header: {
+                        Text("Sık aldıklarınız")
+                    }
+                }
+
                 if !suggestions.isEmpty {
                     Section {
                         ScrollView(.horizontal) {
